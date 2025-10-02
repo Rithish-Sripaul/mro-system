@@ -1,0 +1,23 @@
+{
+  "name": "apextree",
+  "version": "1.3.0",
+  "dependencies": {
+    "@svgdotjs/svg.js": "^3.2.0",
+    "@svgdotjs/svg.panzoom.js": "^2.1.2",
+    "d3-flextree": "^2.1.2"
+  },
+  "peerDependencies": {
+    "@svgdotjs/svg.js": "*",
+    "@svgdotjs/svg.panzoom.js": "^2.1.2"
+  },
+  "type": "module",
+  "typings": "./index.d.ts",
+  "main": "./apextree.min.js",
+  "module": "./apextree.es.min.js",
+  "exports": {
+    ".": {
+      "import": "./apextree.es.min.js",
+      "require": "./apextree.min.js"
+    }
+  }
+}
