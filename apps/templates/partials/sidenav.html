@@ -124,6 +124,39 @@
         </a>
       </li>
 
+      {# JOBS - MANAGE JOBS #}
+
+      <li class="side-nav-item">
+        <a
+          data-bs-toggle="collapse"
+          href="#sidebarMenuLevels"
+          aria-expanded="false"
+          aria-controls="sidebarMenuLevels"
+          class="side-nav-link"
+        >
+          <span class="menu-icon"><i class="ti ti-briefcase"></i></span>
+          <span class="menu-text">Jobs</span>
+          <span class="menu-arrow"></span>
+        </a>
+        <div class="collapse" id="sidebarMenuLevels">
+          <ul class="sub-menu">
+            <li class="side-nav-item">
+              <a href="{{ url_for('jobs.manage_jobs') }}" class="side-nav-link">
+                <span class="menu-icon"><i class="ti ti-table-plus"></i></span>
+                <span class="menu-text">Manage Jobs</span>
+              </a>
+            </li>
+
+            <li class="side-nav-item">
+              <a href="#!" class="side-nav-link disabled">
+                <span class="menu-text">Disabled Item</span>
+                <span class="badge text-bg-light opacity-50">soon</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </li>
+
       <li class="side-nav-item">
         <a href="/landing" target="_blank" class="side-nav-link">
           <span class="menu-icon"><i class="ti ti-stack-front"></i></span>
