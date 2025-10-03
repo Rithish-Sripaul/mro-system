@@ -5,6 +5,9 @@
 <link rel="stylesheet" href="{{ config.ASSETS_ROOT }}/plugins/choices/choices.min.css" />
 <!-- Tagify Plugin CSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@yaireo/tagify@4.35.1/dist/tagify.min.css" />
+<!-- Filepond Plugin CSS -->
+<link rel="stylesheet" href="{{ config.ASSETS_ROOT }}/plugins/filepond/filepond.min.css" type="text/css" />
+<link rel="stylesheet" href="{{ config.ASSETS_ROOT }}/plugins/filepond/filepond-plugin-image-preview.min.css" />
 
 <style>
   /* Add this CSS to a custom stylesheet or within a <style> tag in your extra_css block */
@@ -16,24 +19,6 @@
 
   .choices.is-invalid .choices__inner {
     border-color: #f1556c; /* Bootstrap's danger color */
-  }
-
-  /* Add red border to invalid Dropzone container */
-  .dropzone.is-invalid {
-    border-color: #f1556c; /* Bootstrap's danger color */
-  }
-
-  /* Add red border to invalid Tagify container */
-  tagify.is-invalid + .tagify {
-    border-color: #f1556c;
-  }
-
-  .choices.choices.is-invalid {
-    margin-bottom: 0px !important;
-  }
-
-  .choices.is-valid .choices__inner {
-    border-color: #0acf97; /* Bootstrap's success color */
   }
 </style>
 {% endblock extra_css %} {% block page_content %}
@@ -49,35 +34,35 @@
           <span class="badge badge-soft-success badge-label fs-xxs py-1">Exclusive</span>
         </div>
         <div class="card-body">
-          <div class="ins-wizard" data-wizard>
-            <!-- Navigation Tabs -->
-            <ul class="nav nav-tabs wizard-tabs" data-wizard-nav role="tablist">
-              <li class="nav-item">
-                <a class="nav-link active" data-bs-toggle="tab" href="#jobInfo">
-                  <span class="d-flex align-items-center">
-                    <i class="ti ti-user-circle fs-32"></i>
-                    <span class="flex-grow-1 ms-2 text-truncate">
-                      <span class="mb-0 lh-base d-block fw-semibold text-body fs-base">Job Info</span>
-                      <span class="fs-xxs mb-0">Basic details</span>
+          <form id="createJobForm" method="POST" enctype="multipart/form-data" novalidate>
+            <div class="ins-wizard" data-wizard>
+              <!-- Navigation Tabs -->
+              <ul class="nav nav-tabs wizard-tabs" data-wizard-nav role="tablist">
+                <li class="nav-item">
+                  <a class="nav-link active" data-bs-toggle="tab" href="#jobInfo">
+                    <span class="d-flex align-items-center">
+                      <i class="ti ti-user-circle fs-32"></i>
+                      <span class="flex-grow-1 ms-2 text-truncate">
+                        <span class="mb-0 lh-base d-block fw-semibold text-body fs-base">Job Info</span>
+                        <span class="fs-xxs mb-0">Basic details</span>
+                      </span>
                     </span>
-                  </span>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" data-bs-toggle="tab" href="#documents">
-                  <span class="d-flex align-items-center">
-                    <i class="ti ti-folder fs-32"></i>
-                    <span class="flex-grow-1 ms-2 text-truncate">
-                      <span class="mb-0 lh-base d-block fw-semibold text-body fs-base">Documents</span>
-                      <span class="fs-xxs mb-0">Upload certificates</span>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" data-bs-toggle="tab" href="#documents">
+                    <span class="d-flex align-items-center">
+                      <i class="ti ti-folder fs-32"></i>
+                      <span class="flex-grow-1 ms-2 text-truncate">
+                        <span class="mb-0 lh-base d-block fw-semibold text-body fs-base">Documents</span>
+                        <span class="fs-xxs mb-0">Upload certificates</span>
+                      </span>
                     </span>
-                  </span>
-                </a>
-              </li>
-            </ul>
-            <!-- Content -->
-            <div class="tab-content pt-3" data-wizard-content>
-              <form id="createJobForm" method="POST" enctype="multipart/form-data" novalidate>
+                  </a>
+                </li>
+              </ul>
+              <!-- Content -->
+              <div class="tab-content pt-3" data-wizard-content>
                 <!-- Step 1: Job Info -->
                 <div class="tab-pane fade show active" id="jobInfo">
                   <div class="row">
@@ -92,14 +77,12 @@
                           name="job_name"
                           required
                         />
-                        <div class="invalid-feedback">Please provide a Job Name</div>
                       </div>
                     </div>
-                    {# DIVISION and COORDINATOR #}
-                    <div class="row d-flex mb-0">
+                    <div class="row d-flex">
                       {# DIVISION #}
                       <div class="col-xl-6 d-flex">
-                        <div class="h-100 w-100">
+                        <div class="mb-3 h-100 w-100">
                           <label class="form-label">Division</label>
                           <select
                             class="form-select choices-js-required"
@@ -116,12 +99,11 @@
                             <option value="{{ division._id }}">{{ division.name }}</option>
                             {% endfor %}
                           </select>
-                          <div class="invalid-feedback">Please select at least one division.</div>
                         </div>
                       </div>
                       {# LEAD BY #}
                       <div class="col-xl-6 d-flex">
-                        <div class="h-100 w-100">
+                        <div class="mb-3 h-100 w-100">
                           <label class="form-label">Coordinator</label>
                           <select
                             class="form-select"
@@ -152,7 +134,6 @@
                           placeholder="Enter job description"
                           required
                         ></textarea>
-                        <div class="invalid-feedback">Please provide a job description.</div>
                       </div>
                     </div>
                     <div class="col-xl-12">
@@ -193,10 +174,9 @@
                           data-locale="{'format': 'MM/DD/YYYY hh:mm A'}"
                           required
                         />
-                        <div class="invalid-feedback">Please select a completion date.</div>
                       </div>
                     </div>
-                    {# SCHEDULES #} {# SCHEDULES TYPE #}
+                    {# SCHEDULES #}
                     <div class="col-xl-3">
                       <div class="mb-3">
                         <label for="schedule_type" class="form-label">Schedule Type</label>
@@ -205,10 +185,8 @@
                           <option value="general_schedule">General Schedule</option>
                           <option value="priority_schedule">Priority Schedule</option>
                         </select>
-                        <div class="invalid-feedback">Please select a schedule type.</div>
                       </div>
                     </div>
-                    {# SCHEDULES POSITION #}
                     <div class="col-xl-3">
                       <div class="mb-3">
                         <label for="schedule_position" class="form-label">Schedule Position</label>
@@ -220,84 +198,69 @@
                           value="1"
                           required
                         />
-                        <div class="invalid-feedback">Please provide a schedule position</div>
                       </div>
                     </div>
-
-                    {# DROPZONE UPLOAD #}
-                    <div class="col-xl-12">
-                      <div class="pt-0">
-                        <div
-                          class="dropzone"
-                          id="myAwesomeDropzone"
-                          data-plugin="dropzone"
-                          data-previews-container="#file-previews"
-                          data-upload-preview-template="#uploadPreviewTemplate"
-                        >
-                          <div class="fallback">
-                            <input name="file" type="file" />
-                          </div>
-                          <div class="dz-message needsclick">
-                            <div class="avatar-lg mx-auto mb-3">
-                              <span class="avatar-title bg-info-subtle text-info rounded-circle">
-                                <i class="fs-24 ti ti-cloud-upload"></i>
-                              </span>
-                            </div>
-                            <h4 class="mb-2">Drop files here or click to upload.</h4>
-                            <p class="text-muted fst-italic mb-3">
-                              You can drag images here, or browse files via the button below.
-                            </p>
-                            <button type="button" class="btn btn-sm shadow btn-default">Browse Images</button>
-                          </div>
+                  </div>
+                  <div class="d-flex justify-content-end mt-3">
+                    <button type="button" class="btn btn-primary" data-wizard-next>Next: Upload Documents →</button>
+                  </div>
+                </div>
+                <!-- Step 2: Documents -->
+                <div class="tab-pane fade" id="documents">
+                  <div class="mb-3">
+                    <div class="card-body dropzone pt-0" id="myAwesomeDropzone" data-plugin="dropzone">
+                      <div class="fallback">
+                        <input name="file" type="file" />
+                      </div>
+                      <div class="dz-message needsclick">
+                        <div class="avatar-lg mx-auto mb-3">
+                          <span class="avatar-title bg-info-subtle text-info rounded-circle">
+                            <i class="fs-24 ti ti-cloud-upload"></i>
+                          </span>
                         </div>
-                        <div class="invalid-feedback" id="dropzone-error"></div>
+                        <h4 class="mb-2">Drop files here or click to upload.</h4>
+                        <p class="text-muted fst-italic mb-3">
+                          You can drag files here, or browse files via the button below.
+                        </p>
+                        <button type="button" class="btn btn-sm shadow btn-default">Browse Files</button>
+                      </div>
 
-                        <!-- Preview -->
-                        <div class="dropzone-previews mt-3" id="file-previews"></div>
-
-                        <!-- file preview template -->
-                        <div class="d-none" id="uploadPreviewTemplate">
-                          <div class="card mt-1 mb-0 border-dashed border">
-                            <div class="p-2">
-                              <div class="row align-items-center">
-                                <div class="col-auto">
-                                  <img data-dz-thumbnail src="#" class="avatar-sm rounded bg-light" alt="" />
-                                </div>
-                                <div class="col ps-0">
-                                  <a href="javascript:void(0);" class="fw-semibold" data-dz-name></a>
-                                  <p class="mb-0 text-muted" data-dz-size></p>
-                                </div>
-                                <div class="col-auto">
-                                  <!-- Button -->
-                                  <a href="" class="btn btn-link btn-lg text-danger" data-dz-remove>
-                                    <i class="ti ti-x"></i>
-                                  </a>
-                                </div>
+                      <!-- Preview -->
+                      <div class="dropzone-previews mt-3" id="file-previews"></div>
+                      <!-- file preview template -->
+                      <div class="d-none" id="uploadPreviewTemplate">
+                        <div class="card mt-1 mb-0 border-dashed border">
+                          <div class="p-2">
+                            <div class="row align-items-center">
+                              <div class="col-auto">
+                                <img data-dz-thumbnail src="#" class="avatar-sm rounded bg-light" alt="" />
+                              </div>
+                              <div class="col ps-0">
+                                <a href="javascript:void(0);" class="fw-semibold" data-dz-name></a>
+                                <p class="mb-0 text-muted" data-dz-size></p>
+                              </div>
+                              <div class="col-auto">
+                                <!-- Button -->
+                                <a href="" class="btn btn-link btn-lg text-danger" data-dz-remove>
+                                  <i class="ti ti-x"></i>
+                                </a>
                               </div>
                             </div>
                           </div>
                         </div>
-                        <!-- end file preview template -->
                       </div>
+                      <!-- end file preview template -->
                     </div>
                   </div>
-
-                  <div class="d-flex justify-content-end mt-3">
-                    <button type="submit" class="btn btn-primary">Create Job</button>
+                  <div class="d-flex justify-content-between mt-3">
+                    <button type="button" class="btn btn-secondary" data-wizard-prev>← Back: Job Info</button>
+                    <input type="submit" class="btn btn-success" />
                   </div>
                 </div>
-              </form>
-              <!-- Step 2: Documents -->
-              <div class="tab-pane fade" id="documents">
-                <div class="mb-3"></div>
-                <div class="d-flex justify-content-between mt-3">
-                  <button type="button" class="btn btn-secondary" data-wizard-prev>← Back: Job Info</button>
-                  <input type="submit" class="btn btn-success" />
-                </div>
               </div>
+              <!-- tab-content -->
             </div>
-            <!-- tab-content -->
-          </div>
+          </form>
           <!-- ins-wizard -->
         </div>
         <!-- end card body-->
@@ -322,6 +285,12 @@
 <!-- Tagify Plugin Js (CDN) -->
 <script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify@4.35.1/dist/tagify.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@yaireo/dragsort@1.3.2/dist/dragsort.min.js"></script>
+<!-- Filepond Plugin Js -->
+<script src="{{ config.ASSETS_ROOT }}/plugins/filepond/filepond.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/plugins/filepond/filepond-plugin-image-preview.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/plugins/filepond/filepond-plugin-file-validate-size.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/plugins/filepond/filepond-plugin-image-exif-orientation.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/plugins/filepond/filepond-plugin-file-encode.min.js"></script>
 
 {# CUSTOM JS #}
 <script src="{{ config.ASSETS_ROOT }}/js/pages/manage-jobs.js"></script>
