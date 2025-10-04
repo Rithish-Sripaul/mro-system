@@ -23,6 +23,16 @@ def manage_jobs():
     divisions_list = list(
         divisions_collection.find({}, {"_id": 1, "name": 1}).sort("name", 1)
     )
+    general_schedule_jobs_list = list(
+        jobs_collection.find({"schedule_type": "general_schedule"}).sort(
+            "schedule_position", 1
+        )
+    )
+    priority_schedule_jobs_list = list(
+        jobs_collection.find({"schedule_type": "priority_schedule"}).sort(
+            "schedule_position", 1
+        )
+    )
 
     if request.method == "POST":
         # Handle form submission
@@ -61,6 +71,7 @@ def manage_jobs():
             "coordinators": coordinators,
             "description": description,
             "tags": tags,
+            "status": "pending",
             "start_time": start_time,
             "completion_time": completion_time,
             "schedule_type": schedule_type,
@@ -75,4 +86,6 @@ def manage_jobs():
         "pages/jobs/manage_jobs.html",
         divisions_list=divisions_list,
         user_list=user_list,
+        general_schedule_jobs_list=general_schedule_jobs_list,
+        priority_schedule_jobs_list=priority_schedule_jobs_list,
     )

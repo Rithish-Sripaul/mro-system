@@ -13,7 +13,7 @@ def register_extensions(app):
 
 
 def register_blueprints(app):
-    for module_name in ("pages", "pages.authentication", "pages.jobs"):
+    for module_name in ("pages", "pages.authentication", "pages.jobs", "pages.helper"):
         module = import_module("apps.{}.routes".format(module_name))
         app.register_blueprint(module.blueprint)
 
@@ -43,4 +43,9 @@ def create_app(config):
 
     register_extensions(app)
     register_blueprints(app)
+
+    from apps.commands import seed_jobs_command
+
+    app.cli.add_command(seed_jobs_command)
+
     return app

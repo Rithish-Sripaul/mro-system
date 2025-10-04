@@ -25,7 +25,21 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
 
-      // ... (Your Tagify and Dropzone validation logic remains the same) ...
+      const quillEditor = form.querySelector(".quill-editor-required");
+      if (quillEditor && quillEditor.__quill) {
+        const quill = quillEditor.__quill;
+        const descriptionInput = form.querySelector("#description");
+
+        if (quill.getText().trim().length === 0) {
+          // If empty, mark as invalid and stop the form
+          quillEditor.classList.add("is-invalid");
+          formIsValid = false;
+        } else {
+          // If not empty, mark as valid and update the hidden input
+          quillEditor.classList.remove("is-invalid");
+          descriptionInput.value = quill.root.innerHTML;
+        }
+      }
 
       const tagifyInput = form.querySelector("#basicTagify[required]");
       if (tagifyInput && tagifyInput.tagify) {
@@ -93,6 +107,24 @@ window.addEventListener("load", () => {
       selectElement.addEventListener("change", () => {
         if (form && form.classList.contains("was-validated")) {
           validateChoices(selectElement);
+        }
+      });
+    }
+  });
+  document.querySelectorAll(".quill-editor-required").forEach((quillEditor) => {
+    if (quillEditor && quillEditor.__quill) {
+      const quill = quillEditor.__quill;
+      const form = quillEditor.closest("form");
+      const descriptionInput = form.querySelector("#description");
+
+      quill.on("text-change", () => {
+        if (form && form.classList.contains("was-validated")) {
+          if (quill.getText().trim().length === 0) {
+            quillEditor.classList.add("is-invalid");
+          } else {
+            quillEditor.classList.remove("is-invalid");
+            descriptionInput.value = quill.root.innerHTML;
+          }
         }
       });
     }
