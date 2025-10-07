@@ -48,13 +48,27 @@ def manage_jobs():
         start_time = datetime.datetime.now()
         completion_time = request.form.get("completion_time")
         schedule_type = request.form.get("schedule_type")
-        schedule_position = request.form.get("schedule_position")
+        schedule_position = int(request.form.get("schedule_position"))
 
         # DOCUMENTS
         # File uploads will be handled by Dropzone.js and a separate endpoint
 
         date_format = "%m/%d/%Y %I:%M %p"
         completion_time = datetime.datetime.strptime(completion_time, date_format)
+
+        # Incrementing positions of existing jobs if necessary
+        if schedule_type in ["general_schedule", "priority_schedule"]:
+            jobs_to_update = jobs_collection.find(
+                {
+                    "schedule_type": schedule_type,
+                    "schedule_position": {"$gte": schedule_position},
+                }
+            )
+            for job in jobs_to_update:
+                new_position = job["schedule_position"] + 1
+                jobs_collection.update_one(
+                    {"_id": job["_id"]}, {"$set": {"schedule_position": new_position}}
+                )
 
         tags = []
         if tags_json_string:

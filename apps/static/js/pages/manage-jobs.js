@@ -24,17 +24,21 @@ document.addEventListener("DOMContentLoaded", () => {
     const selectedType = event.target.value;
     const nextPosition = await fetchNextSchedulePosition(selectedType);
     const positionInfoDiv = document.getElementById("empty_schedule_position");
+    const schedulePositionContainer = document.getElementById("schedule_position_container");
+
+    // Clear previous info
+    schedulePositionContainer.innerHTML = "";
     if (nextPosition !== null) {
       positionInput.value = nextPosition;
       positionInput.max = nextPosition; // Set maximum to next position
 
       let htmlContent = `                   
-      <div class="col-xl-3 d-flex justify-content-start gap-3 mb-1">
+      <div class="d-flex justify-content-start gap-3">
         <div class="h-6">Min Position: 1</div>
         <div class="h-6 fw-semibold">Max Position: ${nextPosition}</div>
       </div>
     `;
-      positionInfoDiv.insertAdjacentHTML("afterend", htmlContent);
+      schedulePositionContainer.insertAdjacentHTML("afterbegin", htmlContent);
       updateSchedulePreview();
       console.log(`Next position for ${selectedType}: ${nextPosition}`);
     }
@@ -190,6 +194,11 @@ document.addEventListener("DOMContentLoaded", () => {
       const input = document.querySelector("#basicTagify");
       if (input) {
         input.tagify = new Tagify(input); // Store the instance on the element
+      }
+
+      const removeBtn = document.querySelector(".tags--removeAllBtn");
+      if (removeBtn) {
+        removeBtn.addEventListener("click", () => input.tagify.removeAllTags());
       }
     }
 
