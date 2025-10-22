@@ -147,14 +147,17 @@ def job_details(job_id):
         "pages/jobs/job-details.html", job=job, divisions_dict=divisions_dict
     )
 
+from bson import json_util
 
-@blueprint.route("/api/jobs/<string:job_id>/comments", methods=["GET"])
+@blueprint.route("/<string:job_id>/comments", methods=["GET"])
 def get_comments(job_id):
     """
     Fetches all comments for a specific job, sorted by timestamp.
     """
     try:
-        # We sort by timestamp to make tree-building easier on the frontend
+        # FIX 1: Added get_db()
+        db = get_db() 
+        
         comments_cursor = db.comments.find(
             {"document_id": ObjectId(job_id), "context": "job"}
         ).sort(
@@ -163,16 +166,16 @@ def get_comments(job_id):
 
         comments_list = list(comments_cursor)
 
-        # Use json_util.dumps to correctly serialize ObjectId and datetime
+        # FIX 2: Use json_util.dumps to handle ObjectId and datetime
         return Response(
-            json.dumps(comments_list), 200, {"Content-Type": "application/json"}
+            json_util.dumps(comments_list), 200, {"Content-Type": "application/json"}
         )
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
-@blueprint.route("/api/jobs/<string:job_id>/comments", methods=["POST"])
+@blueprint.route("/<string:job_id>/comments", methods=["POST"])
 @login_required  # Protect this route
 def post_comment(job_id):
     """
@@ -188,25 +191,27 @@ def post_comment(job_id):
         if not text:
             return jsonify({"error": "Comment text is required"}), 400
 
-        # Create the new comment document
+        # FIX 3: Make avatar_url dynamic and add a default fallback
+        # Use session.get() to avoid errors if the key doesn't exist
+        user_avatar = "{{config.ASSETS_ROOT}}/images/users/user-10.jpg"
+
         new_comment = {
             "document_id": ObjectId(job_id),
             "context": "job",
             "user_id": ObjectId(session["user_id"]),
-            "username": session["username"],  # Assuming user model has 'name'
-            "avatar_url": "images/users/user-10.jpg",  # Assuming user model has 'avatar_url'
+            "username": session["user_name"],
+            "avatar_url": user_avatar, # Use the dynamic variable here
             "text": text,
             "timestamp": datetime.datetime.now(),
             "parent_id": ObjectId(parent_id) if parent_id else None,
         }
 
         result = comments_collection.insert_one(new_comment)
-
-        # Fetch the newly created comment to return it
         created_comment = comments_collection.find_one({"_id": result.inserted_id})
 
+        # FIX 2: Use json_util.dumps here as well
         return Response(
-            json.dumps(created_comment),
+            json_util.dumps(created_comment),
             201,
             {"Content-Type": "application/json"},
         )

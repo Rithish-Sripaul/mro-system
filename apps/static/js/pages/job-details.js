@@ -13,7 +13,7 @@ const commentForm = document.getElementById('comment-form');
      */
     async function fetchAndRenderComments() {
       try {
-        const response = await fetch(`/api/jobs/${jobId}/comments`);
+        const response = await fetch(`jobs/api/jobs/${jobId}/comments`);
         if (!response.ok) throw new Error('Failed to fetch comments');
         
         const comments = await response.json();
@@ -48,7 +48,7 @@ const commentForm = document.getElementById('comment-form');
      */
     async function postComment(text, parentId = null) {
       try {
-        const response = await fetch(`/api/jobs/${jobId}/comments`, {
+        const response = await fetch(`jobs/api/jobs/${jobId}/comments`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
