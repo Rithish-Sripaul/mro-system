@@ -141,6 +141,11 @@
         <div class="collapse" id="sidebarMenuLevels">
           <ul class="sub-menu">
             <li class="side-nav-item">
+              <a href="{{ url_for('jobs.view_jobs') }}" class="side-nav-link">
+                <span class="menu-text">All Jobs</span>
+              </a>
+            </li>
+            <li class="side-nav-item">
               <a href="{{ url_for('jobs.manage_jobs') }}" class="side-nav-link">
                 <span class="menu-icon"><i class="ti ti-table-plus"></i></span>
                 <span class="menu-text">Manage Jobs</span>

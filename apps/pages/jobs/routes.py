@@ -2,16 +2,29 @@ import os
 import click
 import datetime
 import json
+from flask_login import current_user
 from pymongo import MongoClient
-from flask import Blueprint, current_app, flash, g
+from flask import Blueprint, Response, current_app, flash, g, jsonify
 from functools import wraps
 from flask import session, redirect, url_for, render_template, request
+from apps.pages.authentication.routes import login_required
 from apps.pages.database import get_db
-
+from bson.objectid import ObjectId
 
 blueprint = Blueprint("jobs", __name__, url_prefix="/jobs")
 
 
+# View jobs
+@blueprint.route("/view_jobs", methods=["GET"])
+def view_jobs():
+    db = get_db()
+    jobs_collection = db["jobs"]
+
+    jobs_list = list(jobs_collection.find({}).sort("created_at", -1))
+    return render_template("pages/jobs/view-jobs.html", jobs=jobs_list)
+
+
+# Manage Jobs
 @blueprint.route("/manage_jobs", methods=["GET", "POST"])
 def manage_jobs():
     db = get_db()
@@ -34,11 +47,16 @@ def manage_jobs():
         )
     )
 
+    jobs_list = list(jobs_collection.find({}).sort("created_at", -1))
+    divisions_dict = {div["_id"]: div["name"] for div in divisions_list}
+    print(divisions_dict)
+
     if request.method == "POST":
         # Handle form submission
 
         # BASIC JOB DETAILS
         job_name = request.form.get("job_name")
+        job_color = request.form.get("job_color")
         divisions = request.form.getlist("divisions")
         coordinators = request.form.getlist("coordinators")
         description = request.form.get("description")
@@ -55,6 +73,7 @@ def manage_jobs():
 
         date_format = "%m/%d/%Y %I:%M %p"
         completion_time = datetime.datetime.strptime(completion_time, date_format)
+        divisions = list(map(lambda x: ObjectId(x), divisions))
 
         # Incrementing positions of existing jobs if necessary
         if schedule_type in ["general_schedule", "priority_schedule"]:
@@ -81,6 +100,7 @@ def manage_jobs():
         # Insert into MongoDB
         job_data = {
             "job_name": job_name,
+            "job_color": job_color,
             "divisions": divisions,
             "coordinators": coordinators,
             "description": description,
@@ -90,6 +110,7 @@ def manage_jobs():
             "completion_time": completion_time,
             "schedule_type": schedule_type,
             "schedule_position": schedule_position,
+            "document_ids": [],
             "created_at": datetime.datetime.now(),
             "updated_at": datetime.datetime.now(),
         }
@@ -97,9 +118,98 @@ def manage_jobs():
         return redirect(url_for("jobs.manage_jobs"))
 
     return render_template(
-        "pages/jobs/manage_jobs.html",
+        "pages/jobs/manage-jobs.html",
         divisions_list=divisions_list,
         user_list=user_list,
         general_schedule_jobs_list=general_schedule_jobs_list,
         priority_schedule_jobs_list=priority_schedule_jobs_list,
+        jobs_list=jobs_list,
+        divisions_dict=divisions_dict,
     )
+
+
+# Job Details
+@blueprint.route("/job_details/<job_id>", methods=["GET", "POST"])
+def job_details(job_id):
+    db = get_db()
+    jobs_collection = db["jobs"]
+    users_collection = db["users"]
+    divisions_collection = db["divisions"]
+
+    divisions_dict = {
+        div["_id"]: div["name"]
+        for div in divisions_collection.find({}, {"_id": 1, "name": 1})
+    }
+
+    job = jobs_collection.find_one({"_id": ObjectId(job_id)})
+
+    return render_template(
+        "pages/jobs/job-details.html", job=job, divisions_dict=divisions_dict
+    )
+
+
+@blueprint.route("/api/jobs/<string:job_id>/comments", methods=["GET"])
+def get_comments(job_id):
+    """
+    Fetches all comments for a specific job, sorted by timestamp.
+    """
+    try:
+        # We sort by timestamp to make tree-building easier on the frontend
+        comments_cursor = db.comments.find(
+            {"document_id": ObjectId(job_id), "context": "job"}
+        ).sort(
+            "timestamp", 1
+        )  # Ascending order
+
+        comments_list = list(comments_cursor)
+
+        # Use json_util.dumps to correctly serialize ObjectId and datetime
+        return Response(
+            json.dumps(comments_list), 200, {"Content-Type": "application/json"}
+        )
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@blueprint.route("/api/jobs/<string:job_id>/comments", methods=["POST"])
+@login_required  # Protect this route
+def post_comment(job_id):
+    """
+    Posts a new comment or a reply.
+    """
+    try:
+        db = get_db()
+        comments_collection = db["comments"]
+        data = request.get_json()
+        text = data.get("text")
+        parent_id = data.get("parent_id")  # This will be null for top-level comments
+
+        if not text:
+            return jsonify({"error": "Comment text is required"}), 400
+
+        # Create the new comment document
+        new_comment = {
+            "document_id": ObjectId(job_id),
+            "context": "job",
+            "user_id": ObjectId(session["user_id"]),
+            "username": session["username"],  # Assuming user model has 'name'
+            "avatar_url": "images/users/user-10.jpg",  # Assuming user model has 'avatar_url'
+            "text": text,
+            "timestamp": datetime.datetime.now(),
+            "parent_id": ObjectId(parent_id) if parent_id else None,
+        }
+
+        result = comments_collection.insert_one(new_comment)
+
+        # Fetch the newly created comment to return it
+        created_comment = comments_collection.find_one({"_id": result.inserted_id})
+
+        return Response(
+            json.dumps(created_comment),
+            201,
+            {"Content-Type": "application/json"},
+        )
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

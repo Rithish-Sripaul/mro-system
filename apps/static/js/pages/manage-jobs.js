@@ -334,7 +334,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
           const options = {
             url: actionUrl,
-            acceptedFiles: "image/*",
           };
 
           if (previewContainer) {

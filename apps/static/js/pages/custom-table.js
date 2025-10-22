@@ -135,6 +135,13 @@ class Table {
         const cell = row.children[headerIndex];
         if (!cell) return true;
 
+        if (column === "division") {
+          // Check our custom data attribute instead of the visible text
+          const divisionsData = cell.dataset.divisions || "";
+          // Our data looks like "|Sales||Engineering|". A search for "|Sales|" will be an exact match.
+          return divisionsData.includes(`|${selectedValue}|`);
+        }
+
         return cell.textContent.trim().toLowerCase() === selectedValue.toLowerCase();
       });
     };
@@ -181,6 +188,51 @@ class Table {
               rangeStart = new Date(now.getFullYear(), 0, 1);
               rangeEnd = new Date(now.getFullYear() + 1, 0, 1);
               return cellDate >= rangeStart && cellDate < rangeEnd;
+            default:
+              return true;
+          }
+        } else if (column === "deadline") {
+          const cellDate = new Date(text);
+          if (isNaN(cellDate.getTime())) return false; // Skip if date is invalid
+
+          const now = new Date();
+          // Set time to 00:00:00 for accurate day comparisons
+          const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          let rangeStart, rangeEnd;
+
+          switch (selectedRange) {
+            case "Today":
+              rangeEnd = new Date(startOfToday);
+              rangeEnd.setDate(startOfToday.getDate() + 1);
+              return cellDate >= startOfToday && cellDate < rangeEnd;
+
+            case "Tomorrow":
+              rangeStart = new Date(startOfToday);
+              rangeStart.setDate(startOfToday.getDate() + 1);
+              rangeEnd = new Date(startOfToday);
+              rangeEnd.setDate(startOfToday.getDate() + 2);
+              return cellDate >= rangeStart && cellDate < rangeEnd;
+
+            case "This Week":
+              // Assuming week starts on Sunday (day 0)
+              const firstDayOfWeek = new Date(startOfToday);
+              firstDayOfWeek.setDate(startOfToday.getDate() - startOfToday.getDay());
+              rangeEnd = new Date(firstDayOfWeek);
+              rangeEnd.setDate(firstDayOfWeek.getDate() + 7);
+              return cellDate >= firstDayOfWeek && cellDate < rangeEnd;
+
+            case "Next Week":
+              const firstDayOfNextWeek = new Date(startOfToday);
+              firstDayOfNextWeek.setDate(startOfToday.getDate() - startOfToday.getDay() + 7);
+              rangeEnd = new Date(firstDayOfNextWeek);
+              rangeEnd.setDate(firstDayOfNextWeek.getDate() + 7);
+              return cellDate >= firstDayOfNextWeek && cellDate < rangeEnd;
+
+            case "This Month":
+              rangeStart = new Date(now.getFullYear(), now.getMonth(), 1);
+              rangeEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+              return cellDate >= rangeStart && cellDate < rangeEnd;
+
             default:
               return true;
           }

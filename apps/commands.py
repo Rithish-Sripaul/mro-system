@@ -39,6 +39,7 @@ def seed_jobs_command():
     for i in range(1, 51):
         job = {
             "job_name": f"General Maintenance Task #{i}",
+            "job_color": "#E91E63",
             "divisions": division_ids,
             "coordinators": user_ids,
             "description": f"This is a test description for general job number {i}.",
@@ -57,6 +58,7 @@ def seed_jobs_command():
     for i in range(1, 51):
         job = {
             "job_name": f"Priority Alert Response #{i}",
+            "job_color": "#E91E63",
             "divisions": division_ids,
             "coordinators": user_ids,
             "description": f"This is a test description for priority job number {i}.",

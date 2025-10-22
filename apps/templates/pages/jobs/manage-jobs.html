@@ -3,6 +3,9 @@
 <link rel="stylesheet" href="{{ config.ASSETS_ROOT }}/plugins/dropzone/dropzone.css" type="text/css" />
 <link rel="stylesheet" href="{{ config.ASSETS_ROOT }}/plugins/daterangepicker/daterangepicker.css" type="text/css" />
 <link rel="stylesheet" href="{{ config.ASSETS_ROOT }}/plugins/choices/choices.min.css" />
+<link rel="stylesheet" href="{{ config.ASSETS_ROOT }}/plugins/pickr/classic.min.css" />
+<link rel="stylesheet" href="{{ config.ASSETS_ROOT }}/plugins/pickr/monolith.min.css" />
+<link rel="stylesheet" href="{{ config.ASSETS_ROOT }}/plugins/pickr/nano.min.css" />
 <link href="{{ config.ASSETS_ROOT }}/plugins/quill/quill.core.css" rel="stylesheet" type="text/css" />
 <link href="{{ config.ASSETS_ROOT }}/plugins/quill/quill.snow.css" rel="stylesheet" type="text/css" />
 
@@ -46,6 +49,23 @@
   .was-validated #quill-editor:has(+ #description:invalid) .ql-container {
     border-color: #f1556c !important; /* Bootstrap's danger color */
   }
+
+  /* 1. Default state for the badge */
+  .division-badge {
+    background-color: #e9ecef;
+    color: #495057;
+    font-size: 0.8rem; /* This applies the h5 font size */
+    font-weight: 600;
+    transition: all 0.3s ease-in-out;
+    line-height: 1.5; /* Improves vertical alignment */
+  }
+  /* 2. Hover state with the green glow */
+  .division-badge:hover {
+    color: #fff;
+    font-weight: 700;
+    background-color: #198754;
+    box-shadow: 0 0 8px #28a745; /* This adds the green glow */
+  }
 </style>
 {% endblock extra_css %} {% block page_content %}
 
@@ -60,38 +80,25 @@
           <span class="badge badge-soft-success badge-label fs-xxs py-1">Exclusive</span>
         </div>
         <div class="card-body">
-          <div class="ins-wizard" data-wizard>
+          <div class="ins-wizard">
             <!-- Navigation Tabs -->
-            <ul class="nav nav-tabs wizard-tabs" data-wizard-nav role="tablist">
-              <li class="nav-item">
-                <a class="nav-link active" data-bs-toggle="tab" href="#jobInfo">
-                  <span class="d-flex align-items-center">
-                    <i class="ti ti-user-circle fs-32"></i>
-                    <span class="flex-grow-1 ms-2 text-truncate">
-                      <span class="mb-0 lh-base d-block fw-semibold text-body fs-base">Job Info</span>
-                      <span class="fs-xxs mb-0">Basic details</span>
-                    </span>
-                  </span>
-                </a>
-              </li>
-              <li class="nav-item">
-                <a class="nav-link" data-bs-toggle="tab" href="#documents">
-                  <span class="d-flex align-items-center">
-                    <i class="ti ti-folder fs-32"></i>
-                    <span class="flex-grow-1 ms-2 text-truncate">
-                      <span class="mb-0 lh-base d-block fw-semibold text-body fs-base">Documents</span>
-                      <span class="fs-xxs mb-0">Upload certificates</span>
-                    </span>
-                  </span>
-                </a>
-              </li>
-            </ul>
+
             <!-- Content -->
-            <div class="tab-content pt-3" data-wizard-content>
+            <div class="tab-content" data-wizard-content>
               <form id="createJobForm" method="POST" enctype="multipart/form-data" novalidate>
                 <!-- Step 1: Job Info -->
                 <div class="tab-pane fade show active" id="jobInfo">
                   <div class="row">
+                    {# JOB COLOR #}
+                    <div class="col-xl-12 mb-3">
+                      <div class="mb-2">
+                        <h5 class="fw-semibold mb-1">Job Color</h5>
+                      </div>
+                      <div class="col-lg-6">
+                        <div class="classic-colorpicker" id="job_color" data-hidden-input="#job_color_value"></div>
+                        <input type="hidden" name="job_color" id="job_color_value" value="#4A81D4" />
+                      </div>
+                    </div>
                     {# JOB NAME #}
                     <div class="col-xl-12">
                       <div class="mb-3">
@@ -106,6 +113,7 @@
                         <div class="invalid-feedback">Please provide a Job Name</div>
                       </div>
                     </div>
+
                     {# DIVISION and COORDINATOR #}
                     <div class="row d-flex mb-3">
                       {# DIVISION #}
@@ -237,66 +245,9 @@
                     </div>
                     <div class="col-xl-9" id="empty_schedule_position"></div>
                     <div class="col-xl-3 mb-1" id="schedule_position_container"></div>
-
-                    {# DROPZONE UPLOAD #}
-                    <div class="col-xl-12">
-                      <div class="pt-0">
-                        <div
-                          class="dropzone"
-                          id="myAwesomeDropzone"
-                          data-plugin="dropzone"
-                          data-previews-container="#file-previews"
-                          data-upload-preview-template="#uploadPreviewTemplate"
-                        >
-                          <div class="fallback">
-                            <input name="file" type="file" />
-                          </div>
-                          <div class="dz-message needsclick">
-                            <div class="avatar-lg mx-auto mb-3">
-                              <span class="avatar-title bg-info-subtle text-info rounded-circle">
-                                <i class="fs-24 ti ti-cloud-upload"></i>
-                              </span>
-                            </div>
-                            <h4 class="mb-2">Drop files here or click to upload.</h4>
-                            <p class="text-muted fst-italic mb-3">
-                              You can drag images here, or browse files via the button below.
-                            </p>
-                            <button type="button" class="btn btn-sm shadow btn-default">Browse Images</button>
-                          </div>
-                        </div>
-                        <div class="invalid-feedback" id="dropzone-error"></div>
-
-                        <!-- Preview -->
-                        <div class="dropzone-previews mt-3" id="file-previews"></div>
-
-                        <!-- file preview template -->
-                        <div class="d-none" id="uploadPreviewTemplate">
-                          <div class="card mt-1 mb-0 border-dashed border">
-                            <div class="p-2">
-                              <div class="row align-items-center">
-                                <div class="col-auto">
-                                  <img data-dz-thumbnail src="#" class="avatar-sm rounded bg-light" alt="" />
-                                </div>
-                                <div class="col ps-0">
-                                  <a href="javascript:void(0);" class="fw-semibold" data-dz-name></a>
-                                  <p class="mb-0 text-muted" data-dz-size></p>
-                                </div>
-                                <div class="col-auto">
-                                  <!-- Button -->
-                                  <a href="" class="btn btn-link btn-lg text-danger" data-dz-remove>
-                                    <i class="ti ti-x"></i>
-                                  </a>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        <!-- end file preview template -->
-                      </div>
-                    </div>
                   </div>
 
-                  <div class="d-flex justify-content-end mt-3">
+                  <div class="d-flex justify-content-start mt-3">
                     <button type="submit" class="btn btn-primary">Create Job</button>
                   </div>
                 </div>
@@ -457,6 +408,210 @@
     <!-- end col-->
   </div>
 
+  {# PAST UPLOADED JOBS #}
+  <div class="row">
+    <div class="col-12">
+      <div data-table data-table-rows-per-page="5" class="card">
+        <div class="card-header">
+          <h4 class="card-title">Complete Custom Table</h4>
+        </div>
+        <div class="card-header border-light justify-content-between">
+          <div class="d-flex gap-2">
+            <div class="app-search">
+              <input data-table-search type="search" class="form-control" placeholder="Search product name..." />
+              <i data-lucide="search" class="app-search-icon text-muted"></i>
+            </div>
+            <button data-table-delete-selected class="btn btn-danger d-none">Delete</button>
+          </div>
+
+          <div class="d-flex align-items-center gap-2">
+            <span class="me-2 fw-semibold">Filter By:</span>
+
+            <!-- Category Filter -->
+            <div class="app-search">
+              <select data-table-filter="category" class="form-select form-control my-1 my-md-0">
+                <option value="All">Category</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Fashion">Fashion</option>
+                <option value="Home">Home</option>
+                <option value="Sports">Sports</option>
+                <option value="Beauty">Beauty</option>
+              </select>
+              <i data-lucide="tag" class="app-search-icon text-muted"></i>
+            </div>
+
+            <div class="app-search">
+              <select data-table-filter="division" class="form-select form-control my-1 my-md-0">
+                <option value="All">Division</option>
+                {% for division in divisions_list %}
+                <option value="{{ division.name }}">{{ division.name }}</option>
+                {% endfor %}
+              </select>
+              <i data-lucide="building" class="app-search-icon text-muted"></i>
+            </div>
+
+            <div class="app-search">
+              <select data-table-filter="schedule_type" class="form-select form-control my-1 my-md-0">
+                <option value="All">Schedule Type</option>
+                <option value="Priority">Priority</option>
+                <option value="General">General</option>
+              </select>
+              <i data-lucide="calendar-check" class="app-search-icon text-muted"></i>
+            </div>
+
+            <!-- Stock Filter -->
+            <div class="app-search">
+              <select data-table-filter="status" class="form-select form-control my-1 my-md-0">
+                <option value="">Status</option>
+                <option value="Published">Published</option>
+                <option value="Pending">Pending</option>
+                <option value="Out of Stock">Out of Stock</option>
+              </select>
+              <i data-lucide="loader" class="app-search-icon text-muted"></i>
+            </div>
+
+            <div class="app-search">
+              <select data-table-range-filter="deadline" class="form-select form-control my-1 my-md-0">
+                <option value="All" selected>All Deadlines</option>
+                <option value="Today">Today</option>
+                <option value="Tomorrow">Tomorrow</option>
+                <option value="This Week">This Week</option>
+                <option value="Next Week">Next Week</option>
+                <option value="This Month">This Month</option>
+              </select>
+              <i data-lucide="clock-alert" class="app-search-icon text-muted"></i>
+            </div>
+
+            <!-- Records Per Page -->
+            <div>
+              <select data-table-set-rows-per-page class="form-select form-control my-1 my-md-0">
+                <option value="5">5</option>
+                <option value="10">10</option>
+                <option value="15">15</option>
+                <option value="20">20</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-custom table-centered table-select table-hover w-100 mb-0">
+            <thead class="bg-light align-middle bg-opacity-25 thead-sm">
+              <tr class="text-uppercase fs-xxs">
+                <th class="ps-3" style="width: 1%">
+                  <input
+                    data-table-select-all
+                    class="form-check-input form-check-input-light fs-14 mt-0"
+                    type="checkbox"
+                    value="option"
+                  />
+                </th>
+                <th data-table-sort="product">Product</th>
+                <th data-table-sort>Created At</th>
+                <th data-table-sort="division" data-column="division">Division</th>
+                <th data-table-sort data-column="category">Category</th>
+                <th data-table-sort>Operations</th>
+                <th data-table-sort data-column="schedule_type">Schedule</th>
+                <th data-table-sort>Position</th>
+                <th data-table-sort data-column="status">Status</th>
+                <th data-table-sort data-column="deadline">Deadline</th>
+                <th class="text-center" style="width: 1%">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Product Row -->
+              {% for job in jobs_list %}
+              <tr>
+                <td class="ps-3">
+                  <input
+                    class="form-check-input form-check-input-light fs-14 product-item-check mt-0"
+                    type="checkbox"
+                    value="option"
+                  />
+                </td>
+
+                <td>
+                  <div class="d-flex">
+                    <div class="avatar-md me-3">
+                      <div
+                        class="rounded"
+                        style="width: 100%; height: 100%; background-color: {{ job.job_color }};"
+                      ></div>
+                    </div>
+                    <div class="d-flex flex-column justify-content-center mb-0">
+                      <h5 class="mb-0">
+                        <a data-sort="product" href="/ecommerce-product-details" class="link-reset">
+                          {{ job.job_name }}
+                        </a>
+                      </h5>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  {{ job.created_at.strftime('%d %b, %Y') }}
+                  <small class="text-muted">{{ job.created_at.strftime('%I:%M %p') }}</small>
+                </td>
+                <td
+                  data-divisions="{% for division_id in job.divisions %}|{{ divisions_dict[division_id] }}|{% endfor %}"
+                >
+                  {% for division_id in job.divisions %}
+                  <a href="#" class="badge division-badge me-2 px-2">{{ divisions_dict[division_id] }}</a>
+                  {% endfor %}
+                </td>
+                <td>Electronics</td>
+                <td>
+                  <h5 class="fs-base mb-0 fw-medium">10 / 12</h5>
+                </td>
+
+                {% if job.schedule_type == "priority_schedule" %}
+                <td>Priority</td>
+                {% else %}
+                <td>General</td>
+                {% endif %}
+
+                <td>{{ job.schedule_position }}</td>
+                {% if job.status == "pending" %}
+                <td><span class="badge badge-soft-warning fs-xxs">Pending</span></td>
+                {% else %}
+                <td><span class="badge badge-soft-success fs-xxs">Published</span></td>
+                {% endif %}
+
+                <td>
+                  {{ job.completion_time.strftime('%d %b, %Y') }}
+                  <small class="text-muted">{{ job.completion_time.strftime('%I:%M %p') }}</small>
+                </td>
+                <td>
+                  <div class="d-flex justify-content-center gap-1">
+                    <a
+                      href="{{ url_for('jobs.job_details', job_id=job._id) }}"
+                      class="btn btn-light btn-icon btn-sm rounded-circle"
+                    >
+                      <i class="ti ti-eye fs-lg"></i>
+                    </a>
+                    <a href="#" class="btn btn-light btn-icon btn-sm rounded-circle">
+                      <i class="ti ti-edit fs-lg"></i>
+                    </a>
+                    <a href="#" data-table-delete-row class="btn btn-danger btn-icon btn-sm rounded-circle">
+                      <i class="ti ti-trash fs-lg"></i>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer border-0">
+          <div class="d-flex justify-content-between align-items-center">
+            <div data-table-pagination-info="products"></div>
+            <div data-table-pagination></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end col -->
+  </div>
+
   <!-- end row -->
 </div>
 <!-- container -->
@@ -474,10 +629,11 @@
 <script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify@4.35.1/dist/tagify.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@yaireo/dragsort@1.3.2/dist/dragsort.min.js"></script>
 <script src="{{ config.ASSETS_ROOT }}/plugins/quill/quill.js"></script>
-
+<script src="{{ config.ASSETS_ROOT }}/plugins/pickr/pickr.min.js"></script>
 {# CUSTOM JS #}
 <script src="{{ config.ASSETS_ROOT }}/js/pages/form-quilljs.js"></script>
 <script src="{{ config.ASSETS_ROOT }}/js/pages/manage-jobs.js"></script>
 <script src="{{ config.ASSETS_ROOT }}/js/pages/custom-table.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/js/pages/form-colorpickr.js"></script>
 
 {% endblock extra_javascript %}
