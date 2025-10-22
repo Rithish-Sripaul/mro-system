@@ -141,6 +141,17 @@
                   </h4>
 
                   <div id="comments-list-container"></div>
+
+                  <div id="comments-footer" class="mt-3" style="display: none;">
+                    <button id="load-more-comments" class="btn btn-light w-100">
+                      Load More Comments
+                    </button>
+                  </div>
+                  <div id="comments-loading" class="text-center mt-3" style="display: none;">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                      <span class="visually-hidden">Loading...</span>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="tab-pane fade" id="tasks" role="tabpanel">
@@ -903,49 +914,81 @@
     const commentTextarea = document.getElementById('comment-textarea');
     const commentsListContainer = document.getElementById('comments-list-container');
     const commentCountSpan = document.getElementById('comment-count');
+    const loadMoreButton = document.getElementById('load-more-comments');
+    const commentsFooter = document.getElementById('comments-footer');
+    const commentsLoading = document.getElementById('comments-loading');
 
-    // Get the job ID from the template
     const jobId = '{{ job._id | string }}';
+
+    // --- Add state for pagination ---
+    let currentPage = 1;
+    let isLoading = false;
 
     // --- 2. CORE FUNCTIONS ---
 
     /**
-     * Fetches all comments and renders them
+     * Fetches comments for a specific page and renders them.
+     * @param {number} page - The page number to fetch.
+     * @param {boolean} append - If true, appends comments. If false, replaces.
      */
-    async function fetchAndRenderComments() {
+    async function fetchAndRenderComments(page = 1, append = false) {
+      if (isLoading) return; // Prevent multiple simultaneous loads
+      isLoading = true;
+
+      // Show loading spinner
+      if (append) {
+        commentsFooter.style.display = 'none'; // Hide button while loading
+        commentsLoading.style.display = 'block';
+      } else {
+        commentsListContainer.innerHTML = ''; // Clear old comments
+        commentsLoading.style.display = 'block';
+      }
+
       try {
-        const response = await fetch(`/jobs/${jobId}/comments`);
+        const response = await fetch(`/jobs/${jobId}/comments?page=${page}&limit=5`);
         if (!response.ok) throw new Error('Failed to fetch comments');
 
-        const comments = await response.json();
+        const data = await response.json();
+        const comments = data.comments; // This is now a pre-built tree
+        const pagination = data.pagination;
 
-        // Update count
-        commentCountSpan.textContent = comments.length;
-
-        // Build a nested tree from the flat comment list
-        const commentTree = buildCommentTree(comments);
-
-        // Clear old comments
-        commentsListContainer.innerHTML = '';
+        // Update total comment count (from all pages)
+        commentCountSpan.textContent = pagination.total_comments;
 
         // Render the tree
-        if (commentTree.length === 0) {
+        if (comments.length === 0 && page === 1) {
           commentsListContainer.innerHTML = '<p class="text-muted">No comments yet. Be the first to comment!</p>';
         } else {
-          commentTree.forEach(comment => {
-            commentsListContainer.innerHTML += createCommentHTML(comment);
+          comments.forEach(comment => {
+            // createCommentHTML is now recursive
+            const commentHTML = createCommentHTML(comment);
+            if (append) {
+              commentsListContainer.insertAdjacentHTML('beforeend', commentHTML);
+            } else {
+              commentsListContainer.innerHTML += commentHTML;
+            }
           });
         }
+
+        // Handle "Load More" button visibility
+        if (pagination.has_more) {
+          commentsFooter.style.display = 'block';
+          currentPage = page; // Update current page state
+        } else {
+          commentsFooter.style.display = 'none';
+        }
+
       } catch (error) {
         console.error('Error fetching comments:', error);
         commentsListContainer.innerHTML = '<p class="text-danger">Could not load comments.</p>';
+      } finally {
+        isLoading = false;
+        commentsLoading.style.display = 'none'; // Hide spinner
       }
     }
 
     /**
      * Posts a new comment or reply
-     * @param {string} text - The comment content
-     * @param {string|null} parentId - The ID of the parent comment (or null)
      */
     async function postComment(text, parentId = null) {
       try {
@@ -964,9 +1007,12 @@
           throw new Error('Failed to post comment');
         }
 
-        // Success! Clear the main textarea and re-fetch all comments
+        // --- MODIFICATION ---
+        // Success! Clear the main textarea and re-fetch *from page 1*
         commentTextarea.value = '';
-        await fetchAndRenderComments(); // Refresh the list
+        currentPage = 1; // Reset to page 1
+        await fetchAndRenderComments(1, false); // Fetch and *replace*
+        // --- END MODIFICATION ---
 
       } catch (error) {
         console.error('Error posting comment:', error);
@@ -975,41 +1021,22 @@
     }
 
     /**
-     * Converts a flat array of comments into a nested tree
+     * The buildCommentTree function is NO LONGER NEEDED here.
+     * The backend is doing the tree building.
      */
-    function buildCommentTree(comments) {
-      const commentMap = {};
-      const tree = [];
-
-      // 1. Create a map of all comments by their ID
-      comments.forEach(comment => {
-        commentMap[comment._id.$oid] = { ...comment, replies: [] };
-      });
-
-      // 2. Build the tree structure
-      Object.values(commentMap).forEach(comment => {
-        const parentId = comment.parent_id ? comment.parent_id.$oid : null;
-        if (parentId && commentMap[parentId]) {
-          // It's a reply, add it to its parent's replies array
-          commentMap[parentId].replies.push(comment);
-        } else {
-          // It's a top-level comment
-          tree.push(comment);
-        }
-      });
-
-      return tree;
-    }
 
     /**
      * Recursively creates the HTML for a comment and its replies
+     * This function is now RECURSIVE.
      */
     function createCommentHTML(comment) {
+      // Use $date for dates coming from json_util
       const date = new Date(comment.timestamp.$date);
       const formattedDate = date.toLocaleString('en-US', {
         month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
       });
 
+      // --- RECURSIVE PART ---
       // Generate HTML for all replies recursively
       let repliesHTML = '';
       if (comment.replies && comment.replies.length > 0) {
@@ -1019,12 +1046,15 @@
           </div>
         `;
       }
+      // --- END RECURSIVE PART ---
 
-      // Use a "data-" attribute to store the comment ID for replying
+      // Use $oid for IDs coming from json_util
+      const commentId = comment._id.$oid;
+
       return `
         <div class="d-flex mb-2 border border-dashed rounded p-3">
           <div class="flex-shrink-0">
-            <img src="{{config.ASSETS_ROOT}}/images/users/user-10.jpg" alt="${comment.username}" class="avatar-sm rounded-circle shadow-sm" />
+            <img src="{{ config.ASSETS_ROOT }}/images/users/user-10.jpg" alt="${comment.username}" class="avatar-sm rounded-circle shadow-sm" />
           </div>
           <div class="flex-grow-1 ms-2">
             <h5 class="mb-1">
@@ -1032,12 +1062,14 @@
               <small class="text-muted">${formattedDate}</small>
             </h5>
             <p class="mb-2">${comment.text}</p>
-            <a href="javascript:void(0);" class="badge bg-light text-muted d-inline-flex align-items-center gap-1 reply-btn" data-comment-id="${comment._id.$oid}">
+            <a href="javascript:void(0);" class="badge bg-light text-muted d-inline-flex align-items-center gap-1 reply-btn" data-comment-id="${commentId}">
               <i class="ti ti-arrow-back-up fs-lg"></i>
               Reply
             </a>
-            ${repliesHTML}
-          </div>
+            
+            <div class="reply-form-container mt-3"></div>
+            
+            ${repliesHTML} </div>
         </div>
       `;
     }
@@ -1065,13 +1097,12 @@
         </form>
       `;
 
-      // Add the form after the parent comment's content
-      parentElement.insertAdjacentHTML('beforeend', formHTML);
+      // Find the reply-form-container *within* the parent element
+      const replyContainer = parentElement.querySelector('.reply-form-container');
+      replyContainer.innerHTML = formHTML;
 
       const tempForm = document.getElementById('temp-reply-form');
       const tempTextarea = tempForm.querySelector('textarea');
-
-      // Focus the new textarea
       tempTextarea.focus();
 
       // Handle submission
@@ -1079,14 +1110,14 @@
         e.preventDefault();
         const replyText = tempTextarea.value.trim();
         if (replyText) {
+          // We don't need to remove the form, posting re-fetches everything
           await postComment(replyText, parentId);
-          tempForm.remove(); // Clean up form on success
         }
       });
 
       // Handle cancel
       tempForm.querySelector('.cancel-reply').addEventListener('click', () => {
-        tempForm.remove();
+        replyContainer.innerHTML = ''; // Just clear the container
       });
     }
 
@@ -1094,30 +1125,34 @@
 
     // Handle top-level comment form submission
     commentForm.addEventListener('submit', async (e) => {
-      e.preventDefault(); // Stop page reload
+      e.preventDefault();
       const text = commentTextarea.value.trim();
       if (text) {
-        await postComment(text, null); // null parentId for top-level
+        await postComment(text, null);
       }
     });
 
     // Handle "Reply" button clicks using event delegation
     commentsListContainer.addEventListener('click', (e) => {
       const replyButton = e.target.closest('.reply-btn');
-
       if (replyButton) {
         e.preventDefault();
         const parentId = replyButton.dataset.commentId;
-        // Find the `flex-grow-1` div to append the form to
         const parentCommentBody = replyButton.closest('.flex-grow-1');
         showReplyForm(parentId, parentCommentBody);
       }
     });
 
+    // --- NEW: Add click listener for "Load More" button ---
+    loadMoreButton.addEventListener('click', () => {
+      fetchAndRenderComments(currentPage + 1, true); // Fetch next page and append
+    });
+
     // --- 4. INITIAL LOAD ---
-    fetchAndRenderComments();
+    fetchAndRenderComments(1, false); // Fetch page 1 and replace
 
   });
+
 </script>
 
 {% endblock page_content %}

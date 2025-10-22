@@ -2,6 +2,7 @@ import os
 import click
 import datetime
 import json
+import math
 from flask_login import current_user
 from pymongo import MongoClient
 from flask import Blueprint, Response, current_app, flash, g, jsonify
@@ -149,31 +150,90 @@ def job_details(job_id):
 
 from bson import json_util
 
+def build_comment_tree(comments):
+    """
+    Helper function to build a nested tree from a flat list of comments.
+    """
+    comment_map = {}
+    tree = []
+    
+    # Create a map of all comments by their ID
+    for comment in comments:
+        comment_id_str = str(comment['_id'])
+        comment_map[comment_id_str] = {**comment, "replies": []}
+
+    # Build the tree structure
+    for comment_id, comment in comment_map.items():
+        parent_id = comment.get('parent_id')
+        parent_id_str = str(parent_id) if parent_id else None
+        
+        if parent_id_str and parent_id_str in comment_map:
+            # It's a reply, add it to its parent's replies array
+            comment_map[parent_id_str]['replies'].append(comment)
+        else:
+            # It's a top-level comment
+            tree.append(comment)
+            
+    return tree
+
 @blueprint.route("/<string:job_id>/comments", methods=["GET"])
 def get_comments(job_id):
     """
-    Fetches all comments for a specific job, sorted by timestamp.
+    Fetches comments for a specific job, with pagination for top-level comments.
     """
     try:
-        # FIX 1: Added get_db()
         db = get_db() 
         
-        comments_cursor = db.comments.find(
-            {"document_id": ObjectId(job_id), "context": "job"}
-        ).sort(
-            "timestamp", 1
-        )  # Ascending order
-
-        comments_list = list(comments_cursor)
-
-        # FIX 2: Use json_util.dumps to handle ObjectId and datetime
+        # 1. Get page number from query args, default to 1
+        page = request.args.get('page', 1, type=int)
+        limit = 5  # Show 5 top-level comments per page
+        skip = (page - 1) * limit
+        
+        # 2. Fetch *all* comments for this job (we need them all to build the tree)
+        all_comments_cursor = db.comments.find({
+            "document_id": ObjectId(job_id),
+            "context": "job"
+        }).sort("timestamp", 1) # Sort oldest to newest to build tree correctly
+        
+        all_comments = list(all_comments_cursor)
+        
+        # 3. Build the *full* nested tree
+        comment_tree = build_comment_tree(all_comments)
+        
+        # 4. Sort the *top-level* comments (newest first)
+        comment_tree.sort(key=lambda x: x['timestamp'], reverse=True)
+        
+        # 5. Get pagination info
+        total_top_level_comments = len(comment_tree)
+        total_pages = math.ceil(total_top_level_comments / limit)
+        has_more = page < total_pages
+        
+        # 6. Get the *slice* for the current page
+        paginated_tree_slice = comment_tree[skip : skip + limit]
+        
+        # 7. Prepare the response
+        response_data = {
+            "comments": paginated_tree_slice, # This list contains nested replies
+            "pagination": {
+                "page": page,
+                "limit": limit,
+                "total_pages": total_pages,
+                "total_comments": len(all_comments), # Total of all comments (incl. replies)
+                "has_more": has_more
+            }
+        }
+        
         return Response(
-            json_util.dumps(comments_list), 200, {"Content-Type": "application/json"}
+            json_util.dumps(response_data), 200, {"Content-Type": "application/json"}
         )
 
     except Exception as e:
+        print(f"Error in get_comments: {e}")
         return jsonify({"error": str(e)}), 500
 
+# -----------------------------------------------------------------
+# VVVV --- MODIFIED post_comment FUNCTION --- VVVV
+# -----------------------------------------------------------------
 
 @blueprint.route("/<string:job_id>/comments", methods=["POST"])
 @login_required  # Protect this route
@@ -191,9 +251,9 @@ def post_comment(job_id):
         if not text:
             return jsonify({"error": "Comment text is required"}), 400
 
-        # FIX 3: Make avatar_url dynamic and add a default fallback
-        # Use session.get() to avoid errors if the key doesn't exist
-        user_avatar = "{{config.ASSETS_ROOT}}/images/users/user-10.jpg"
+        # --- FIX: Use the avatar_url from the session ---
+        user_avatar = session.get("avatar_url", "{{config.ASSETS_ROOT}}/images/users/user-placeholder.jpg")
+        # --- END FIX ---
 
         new_comment = {
             "document_id": ObjectId(job_id),
@@ -209,7 +269,6 @@ def post_comment(job_id):
         result = comments_collection.insert_one(new_comment)
         created_comment = comments_collection.find_one({"_id": result.inserted_id})
 
-        # FIX 2: Use json_util.dumps here as well
         return Response(
             json_util.dumps(created_comment),
             201,
@@ -217,4 +276,5 @@ def post_comment(job_id):
         )
 
     except Exception as e:
+        print(f"Error in post_comment: {e}")
         return jsonify({"error": str(e)}), 500
