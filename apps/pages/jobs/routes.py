@@ -231,10 +231,6 @@ def get_comments(job_id):
         print(f"Error in get_comments: {e}")
         return jsonify({"error": str(e)}), 500
 
-# -----------------------------------------------------------------
-# VVVV --- MODIFIED post_comment FUNCTION --- VVVV
-# -----------------------------------------------------------------
-
 @blueprint.route("/<string:job_id>/comments", methods=["POST"])
 @login_required  # Protect this route
 def post_comment(job_id):
@@ -277,4 +273,44 @@ def post_comment(job_id):
 
     except Exception as e:
         print(f"Error in post_comment: {e}")
+        return jsonify({"error": str(e)}), 500
+    
+@blueprint.route("/<string:job_id>/team", methods=["GET"])
+def get_job_team(job_id):
+    """
+    Fetches the details of team members (coordinators) assigned to a job.
+    """
+    try:
+        db = get_db()
+        jobs_collection = db["jobs"]
+        users_collection = db["users"]
+
+        job = jobs_collection.find_one({"_id": ObjectId(job_id)}, {"coordinators": 1})
+
+        if not job:
+            return jsonify({"error": "Job not found"}), 404
+
+        coordinator_ids_str = job.get("coordinators", [])
+        if not coordinator_ids_str:
+            return jsonify([]) # Return empty list if no coordinators
+
+        # Convert string IDs back to ObjectIds for querying
+        coordinator_object_ids = [ObjectId(uid) for uid in coordinator_ids_str]
+
+        # Fetch user details for the coordinators
+        # Select only necessary fields: _id, name, avatar_url, and maybe role/title
+        team_members_cursor = users_collection.find(
+            {"_id": {"$in": coordinator_object_ids}},
+            {"_id": 1, "name": 1, "avatar_url": 1, "role": 1} # Assuming users have a 'role' field
+        )
+
+        team_members = list(team_members_cursor)
+
+        # Use json_util.dumps to handle ObjectIds correctly
+        return Response(
+            json_util.dumps(team_members), 200, {"Content-Type": "application/json"}
+        )
+
+    except Exception as e:
+        print(f"Error in get_job_team: {e}")
         return jsonify({"error": str(e)}), 500
