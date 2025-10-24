@@ -24,7 +24,7 @@
 {% endblock extra_css %} {% block page_content %}
 
 <div class="container-fluid">
-  {% set title='Project Overview' %} {% set subtitle='Projects' %} {% include 'partials/page-title.html' %}
+  {% set title='Job Overview' %} {% set subtitle='Jobs' %} {% include 'partials/page-title.html' %}
 
   <div class="row justify-content-center">
     <div class="col-xxl-10">
@@ -52,7 +52,7 @@
             </div>
             <div class="card-body px-4">
               <div class="mb-4">
-                <h5 class="fs-base mb-2">Project Description:</h5>
+                <h5 class="fs-base mb-2">Job Description:</h5>
                 {{ job.description | safe }}
               </div>
               <div class="row mb-4">
@@ -109,7 +109,7 @@
                 <li class="nav-item">
                   <a class="nav-link" data-bs-toggle="tab" href="#tasks" role="tab">
                     <i class="ti ti-list-check fs-lg me-md-1 align-middle"></i>
-                    <span class="d-none d-md-inline-block align-middle">Task List</span>
+                    <span class="d-none d-md-inline-block align-middle">Operations</span>
                   </a>
                 </li>
                 <li class="nav-item">
@@ -123,8 +123,12 @@
                 <div class="tab-pane fade active show" id="comments" role="tabpanel">
                   <form id="comment-form" action="#" class="mb-3">
                     <div class="mb-3">
-                      <textarea class="form-control" id="comment-textarea" rows="4"
-                        placeholder="Enter your messages..."></textarea>
+                      <textarea
+                        class="form-control"
+                        id="comment-textarea"
+                        rows="4"
+                        placeholder="Enter your messages..."
+                      ></textarea>
                     </div>
                     <div class="text-end">
                       <button type="submit" class="btn btn-secondary btn-sm">
@@ -142,12 +146,10 @@
 
                   <div id="comments-list-container"></div>
 
-                  <div id="comments-footer" class="mt-3" style="display: none;">
-                    <button id="load-more-comments" class="btn btn-light w-100">
-                      Load More Comments
-                    </button>
+                  <div id="comments-footer" class="mt-3" style="display: none">
+                    <button id="load-more-comments" class="btn btn-light w-100">Load More Comments</button>
                   </div>
-                  <div id="comments-loading" class="text-center mt-3" style="display: none;">
+                  <div id="comments-loading" class="text-center mt-3" style="display: none">
                     <div class="spinner-border spinner-border-sm text-primary" role="status">
                       <span class="visually-hidden">Loading...</span>
                     </div>
@@ -170,8 +172,11 @@
                           <div class="d-flex align-items-center gap-3 justify-content-md-end">
                             <div class="d-flex align-items-center gap-1">
                               <div class="avatar avatar-xs">
-                                <img src="{{ config.ASSETS_ROOT }}/images/users/user-2.jpg" alt="avatar-2"
-                                  class="img-fluid rounded-circle" />
+                                <img
+                                  src="{{ config.ASSETS_ROOT }}/images/users/user-2.jpg"
+                                  alt="avatar-2"
+                                  class="img-fluid rounded-circle"
+                                />
                               </div>
                               <div>
                                 <h5 class="text-nowrap mb-0 lh-base">
@@ -219,8 +224,11 @@
                           <div class="d-flex align-items-center gap-3 justify-content-md-end">
                             <div class="d-flex align-items-center gap-1">
                               <div class="avatar avatar-xs">
-                                <img src="{{ config.ASSETS_ROOT }}/images/users/user-4.jpg" alt="avatar-4"
-                                  class="img-fluid rounded-circle" />
+                                <img
+                                  src="{{ config.ASSETS_ROOT }}/images/users/user-4.jpg"
+                                  alt="avatar-4"
+                                  class="img-fluid rounded-circle"
+                                />
                               </div>
                               <div>
                                 <h5 class="text-nowrap mb-0 lh-base">
@@ -268,8 +276,11 @@
                           <div class="d-flex align-items-center gap-3 justify-content-md-end">
                             <div class="d-flex align-items-center gap-1">
                               <div class="avatar avatar-xs">
-                                <img src="{{ config.ASSETS_ROOT }}/images/users/user-5.jpg" alt="avatar-5"
-                                  class="img-fluid rounded-circle" />
+                                <img
+                                  src="{{ config.ASSETS_ROOT }}/images/users/user-5.jpg"
+                                  alt="avatar-5"
+                                  class="img-fluid rounded-circle"
+                                />
                               </div>
                               <div>
                                 <h5 class="text-nowrap mb-0 lh-base">
@@ -317,8 +328,11 @@
                           <div class="d-flex align-items-center gap-3 justify-content-md-end">
                             <div class="d-flex align-items-center gap-1">
                               <div class="avatar avatar-xs">
-                                <img src="{{ config.ASSETS_ROOT }}/images/users/user-6.jpg" alt="avatar-6"
-                                  class="img-fluid rounded-circle" />
+                                <img
+                                  src="{{ config.ASSETS_ROOT }}/images/users/user-6.jpg"
+                                  alt="avatar-6"
+                                  class="img-fluid rounded-circle"
+                                />
                               </div>
                               <div>
                                 <h5 class="text-nowrap mb-0 lh-base">
@@ -366,8 +380,11 @@
                           <div class="d-flex align-items-center gap-3 justify-content-md-end">
                             <div class="d-flex align-items-center gap-1">
                               <div class="avatar avatar-xs">
-                                <img src="{{ config.ASSETS_ROOT }}/images/users/user-7.jpg" alt="avatar-7"
-                                  class="img-fluid rounded-circle" />
+                                <img
+                                  src="{{ config.ASSETS_ROOT }}/images/users/user-7.jpg"
+                                  alt="avatar-7"
+                                  class="img-fluid rounded-circle"
+                                />
                               </div>
                               <div>
                                 <h5 class="text-nowrap mb-0 lh-base">
@@ -415,8 +432,11 @@
                           <div class="d-flex align-items-center gap-3 justify-content-md-end">
                             <div class="d-flex align-items-center gap-1">
                               <div class="avatar avatar-xs">
-                                <img src="{{ config.ASSETS_ROOT }}/images/users/user-8.jpg" alt="avatar-8"
-                                  class="img-fluid rounded-circle" />
+                                <img
+                                  src="{{ config.ASSETS_ROOT }}/images/users/user-8.jpg"
+                                  alt="avatar-8"
+                                  class="img-fluid rounded-circle"
+                                />
                               </div>
                               <div>
                                 <h5 class="text-nowrap mb-0 lh-base">
@@ -464,8 +484,11 @@
                           <div class="d-flex align-items-center gap-3 justify-content-md-end">
                             <div class="d-flex align-items-center gap-1">
                               <div class="avatar avatar-xs">
-                                <img src="{{ config.ASSETS_ROOT }}/images/users/user-9.jpg" alt="avatar-9"
-                                  class="img-fluid rounded-circle" />
+                                <img
+                                  src="{{ config.ASSETS_ROOT }}/images/users/user-9.jpg"
+                                  alt="avatar-9"
+                                  class="img-fluid rounded-circle"
+                                />
                               </div>
                               <div>
                                 <h5 class="text-nowrap mb-0 lh-base">
@@ -502,8 +525,11 @@
                 <div class="tab-pane fade" id="activity" role="tabpanel">
                   <div class="d-flex gap-1 border-bottom border-dashed pb-3">
                     <div class="me-2 flex-shrink-0">
-                      <img src="{{ config.ASSETS_ROOT }}/images/users/user-1.jpg" class="avatar-md rounded-circle"
-                        alt="" />
+                      <img
+                        src="{{ config.ASSETS_ROOT }}/images/users/user-1.jpg"
+                        class="avatar-md rounded-circle"
+                        alt=""
+                      />
                     </div>
                     <div class="flex-grow-1 text-muted">
                       <span class="fw-medium text-body">Daniel Martinez</span>
@@ -515,8 +541,11 @@
 
                   <div class="d-flex gap-1 border-bottom border-dashed py-3">
                     <div class="me-2 flex-shrink-0">
-                      <img src="{{ config.ASSETS_ROOT }}/images/users/user-2.jpg" class="avatar-md rounded-circle"
-                        alt="" />
+                      <img
+                        src="{{ config.ASSETS_ROOT }}/images/users/user-2.jpg"
+                        class="avatar-md rounded-circle"
+                        alt=""
+                      />
                     </div>
                     <div class="flex-grow-1 text-muted">
                       <span class="fw-medium text-body">Nina Patel</span>
@@ -528,8 +557,11 @@
 
                   <div class="d-flex gap-1 border-bottom border-dashed py-3">
                     <div class="me-2 flex-shrink-0">
-                      <img src="{{ config.ASSETS_ROOT }}/images/users/user-3.jpg" class="avatar-md rounded-circle"
-                        alt="" />
+                      <img
+                        src="{{ config.ASSETS_ROOT }}/images/users/user-3.jpg"
+                        class="avatar-md rounded-circle"
+                        alt=""
+                      />
                     </div>
                     <div class="flex-grow-1 text-muted">
                       <span class="fw-medium text-body">Jason Lee</span>
@@ -541,8 +573,11 @@
 
                   <div class="d-flex gap-1 border-bottom border-dashed py-3">
                     <div class="me-2 flex-shrink-0">
-                      <img src="{{ config.ASSETS_ROOT }}/images/users/user-4.jpg" class="avatar-md rounded-circle"
-                        alt="" />
+                      <img
+                        src="{{ config.ASSETS_ROOT }}/images/users/user-4.jpg"
+                        class="avatar-md rounded-circle"
+                        alt=""
+                      />
                     </div>
                     <div class="flex-grow-1 text-muted">
                       <span class="fw-medium text-body">Emma Davis</span>
@@ -558,8 +593,11 @@
 
                   <div class="d-flex gap-1 border-bottom border-dashed py-3">
                     <div class="me-2 flex-shrink-0">
-                      <img src="{{ config.ASSETS_ROOT }}/images/users/user-5.jpg" class="avatar-md rounded-circle"
-                        alt="" />
+                      <img
+                        src="{{ config.ASSETS_ROOT }}/images/users/user-5.jpg"
+                        class="avatar-md rounded-circle"
+                        alt=""
+                      />
                     </div>
                     <div class="flex-grow-1 text-muted position-relative">
                       <span class="fw-medium text-body">Leo Zhang</span>
@@ -617,121 +655,37 @@
 
                 <!-- End -->
               </div>
-
               <div class="px-3 pt-3 border-bottom border-dashed">
                 <div class="d-flex mb-3 justify-content-between align-items-center">
                   <h5 class="mb-0">Files:</h5>
-                  <a href="javascript: void(0);" class="btn btn-light btn-sm btn-icon rounded-circle">
+                  <input type="file" id="job-file-input" multiple style="display: none" />
+                  <button
+                    type="button"
+                    id="add-file-btn"
+                    class="btn btn-light btn-sm btn-icon rounded-circle"
+                    title="Upload Files"
+                  >
                     <i class="ti ti-plus"></i>
-                  </a>
+                  </button>
                 </div>
 
-                <!-- Download Files -->
-                <div class="d-flex justify-content-between align-items-center pb-2">
-                  <div class="d-flex align-items-center py-1 gap-2">
-                    <div class="flex-shrink-0 avatar-md bg-light bg-opacity-50 text-muted rounded-2">
-                      <i class="ti ti-file-text fs-xl avatar-title"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                      <h5 class="mb-1 fs-base"><a href="#!" class="link-reset">Project-Brief.pdf</a></h5>
-                      <p class="text-muted mb-0 fs-xs">2.1MB</p>
-                    </div>
-                  </div>
-                  <div>
-                    <a href="#" class="btn btn-sm btn-icon btn-default" title="Download">
-                      <i class="ti ti-download fs-lg"></i>
-                    </a>
-                  </div>
+                <div id="job-files-list">
+                  <div class="text-center py-2 text-muted" id="files-loading-placeholder">Loading files...</div>
                 </div>
 
-                <div class="d-flex justify-content-between align-items-center pb-2">
-                  <div class="d-flex align-items-center py-1 gap-2">
-                    <div class="flex-shrink-0 avatar-md bg-light bg-opacity-50 text-muted rounded-2">
-                      <i class="ti ti-file-music fs-xl avatar-title"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                      <h5 class="mb-1 fs-base"><a href="#!" class="link-reset">Team-Intro.mp3</a></h5>
-                      <p class="text-muted mb-0 fs-xs">5.6MB</p>
-                    </div>
+                <div id="file-upload-status" class="mt-2" style="display: none">
+                  <div class="progress progress-sm">
+                    <div
+                      id="file-upload-progress"
+                      class="progress-bar"
+                      role="progressbar"
+                      style="width: 0%"
+                      aria-valuenow="0"
+                      aria-valuemin="0"
+                      aria-valuemax="100"
+                    ></div>
                   </div>
-                  <div>
-                    <a href="#" class="btn btn-sm btn-icon btn-default" title="Download">
-                      <i class="ti ti-download fs-lg"></i>
-                    </a>
-                  </div>
-                </div>
-
-                <div class="d-flex justify-content-between align-items-center pb-2">
-                  <div class="d-flex align-items-center py-1 gap-2">
-                    <div class="flex-shrink-0 avatar-md bg-light bg-opacity-50 text-muted rounded-2">
-                      <i class="ti ti-file-zip fs-xl avatar-title"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                      <h5 class="mb-1 fs-base"><a href="#!" class="link-reset">UI-Kit.zip</a></h5>
-                      <p class="text-muted mb-0 fs-xs">42MB</p>
-                    </div>
-                  </div>
-                  <div>
-                    <a href="#" class="btn btn-sm btn-icon btn-default" title="Download">
-                      <i class="ti ti-download fs-lg"></i>
-                    </a>
-                  </div>
-                </div>
-
-                <div class="d-flex justify-content-between align-items-center pb-2">
-                  <div class="d-flex align-items-center py-1 gap-2">
-                    <div class="flex-shrink-0 avatar-md bg-light bg-opacity-50 text-muted rounded-2">
-                      <i class="ti ti-file-type-png fs-xl avatar-title"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                      <h5 class="mb-1 fs-base"><a href="#!" class="link-reset">Brand-Logo.png</a></h5>
-                      <p class="text-muted mb-0 fs-xs">1.2MB</p>
-                    </div>
-                  </div>
-                  <div>
-                    <a href="#" class="btn btn-sm btn-icon btn-default" title="Download">
-                      <i class="ti ti-download fs-lg"></i>
-                    </a>
-                  </div>
-                </div>
-
-                <div class="d-flex justify-content-between align-items-center pb-2">
-                  <div class="d-flex align-items-center py-1 gap-2">
-                    <div class="flex-shrink-0 avatar-md bg-light bg-opacity-50 text-muted rounded-2">
-                      <i class="ti ti-video fs-xl avatar-title"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                      <h5 class="mb-1 fs-base"><a href="#!" class="link-reset">Promo-Video.mp4</a></h5>
-                      <p class="text-muted mb-0 fs-xs">78MB</p>
-                    </div>
-                  </div>
-                  <div>
-                    <a href="#" class="btn btn-sm btn-icon btn-default" title="Download">
-                      <i class="ti ti-download fs-lg"></i>
-                    </a>
-                  </div>
-                </div>
-
-                <div class="d-flex justify-content-between align-items-center pb-2">
-                  <div class="d-flex align-items-center py-1 gap-2">
-                    <div class="flex-shrink-0 avatar-md bg-light bg-opacity-50 text-muted rounded-2">
-                      <i class="ti ti-file-code fs-xl avatar-title"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                      <h5 class="mb-1 fs-base"><a href="#!" class="link-reset">dashboard-config.json</a></h5>
-                      <p class="text-muted mb-0 fs-xs">524KB</p>
-                    </div>
-                  </div>
-                  <div>
-                    <a href="#" class="btn btn-sm btn-icon btn-default" title="Download">
-                      <i class="ti ti-download fs-lg"></i>
-                    </a>
-                  </div>
-                </div>
-
-                <div class="d-flex align-items-center justify-content-center gap-2 p-3">
-                  <strong>Loading...</strong>
-                  <div class="spinner-border spinner-border-sm text-danger" role="status" aria-hidden="true"></div>
+                  <small id="file-upload-message" class="text-muted"></small>
                 </div>
               </div>
             </div>
@@ -749,24 +703,31 @@
 </div>
 <!-- container -->
 
-
 <script>
-  document.addEventListener('DOMContentLoaded', function () {
-
+  document.addEventListener("DOMContentLoaded", function () {
     // --- 1. SELECTORS & STATE ---
-    const commentForm = document.getElementById('comment-form');
-    const commentTextarea = document.getElementById('comment-textarea');
-    const commentsListContainer = document.getElementById('comments-list-container');
-    const commentCountSpan = document.getElementById('comment-count');
-    const loadMoreButton = document.getElementById('load-more-comments');
-    const commentsFooter = document.getElementById('comments-footer');
-    const commentsLoading = document.getElementById('comments-loading');
+    const commentForm = document.getElementById("comment-form");
+    const commentTextarea = document.getElementById("comment-textarea");
+    const commentsListContainer = document.getElementById("comments-list-container");
+    const commentCountSpan = document.getElementById("comment-count");
+    const loadMoreButton = document.getElementById("load-more-comments");
+    const commentsFooter = document.getElementById("comments-footer");
+    const commentsLoading = document.getElementById("comments-loading");
 
-    const teamMembersListContainer = document.getElementById('team-members-list');
-    const teamLoadingPlaceholder = document.getElementById('team-loading-placeholder');
+    const teamMembersListContainer = document.getElementById("team-members-list");
+    const teamLoadingPlaceholder = document.getElementById("team-loading-placeholder");
     // const addTeamMemberBtn = document.getElementById('add-team-member-btn'); // For later use
 
-    const jobId = '{{ job._id | string }}';
+    // Selectors for file uploads
+    const jobFilesListContainer = document.getElementById("job-files-list");
+    const filesLoadingPlaceholder = document.getElementById("files-loading-placeholder");
+    const addFileBtn = document.getElementById("add-file-btn");
+    const jobFileInput = document.getElementById("job-file-input");
+    const fileUploadStatusDiv = document.getElementById("file-upload-status");
+    const fileUploadProgressBar = document.getElementById("file-upload-progress");
+    const fileUploadMessage = document.getElementById("file-upload-message");
+
+    const jobId = "{{ job._id | string }}";
 
     // --- Add state for pagination ---
     let currentPage = 1;
@@ -785,16 +746,16 @@
 
       // Show loading spinner
       if (append) {
-        commentsFooter.style.display = 'none'; // Hide button while loading
-        commentsLoading.style.display = 'block';
+        commentsFooter.style.display = "none"; // Hide button while loading
+        commentsLoading.style.display = "block";
       } else {
-        commentsListContainer.innerHTML = ''; // Clear old comments
-        commentsLoading.style.display = 'block';
+        commentsListContainer.innerHTML = ""; // Clear old comments
+        commentsLoading.style.display = "block";
       }
 
       try {
         const response = await fetch(`/jobs/${jobId}/comments?page=${page}&limit=5`);
-        if (!response.ok) throw new Error('Failed to fetch comments');
+        if (!response.ok) throw new Error("Failed to fetch comments");
 
         const data = await response.json();
         const comments = data.comments; // This is now a pre-built tree
@@ -807,11 +768,11 @@
         if (comments.length === 0 && page === 1) {
           commentsListContainer.innerHTML = '<p class="text-muted">No comments yet. Be the first to comment!</p>';
         } else {
-          comments.forEach(comment => {
+          comments.forEach((comment) => {
             // createCommentHTML is now recursive
             const commentHTML = createCommentHTML(comment);
             if (append) {
-              commentsListContainer.insertAdjacentHTML('beforeend', commentHTML);
+              commentsListContainer.insertAdjacentHTML("beforeend", commentHTML);
             } else {
               commentsListContainer.innerHTML += commentHTML;
             }
@@ -820,18 +781,17 @@
 
         // Handle "Load More" button visibility
         if (pagination.has_more) {
-          commentsFooter.style.display = 'block';
+          commentsFooter.style.display = "block";
           currentPage = page; // Update current page state
         } else {
-          commentsFooter.style.display = 'none';
+          commentsFooter.style.display = "none";
         }
-
       } catch (error) {
-        console.error('Error fetching comments:', error);
+        console.error("Error fetching comments:", error);
         commentsListContainer.innerHTML = '<p class="text-danger">Could not load comments.</p>';
       } finally {
         isLoading = false;
-        commentsLoading.style.display = 'none'; // Hide spinner
+        commentsLoading.style.display = "none"; // Hide spinner
       }
     }
 
@@ -841,30 +801,29 @@
     async function postComment(text, parentId = null) {
       try {
         const response = await fetch(`/jobs/${jobId}/comments`, {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             text: text,
-            parent_id: parentId
+            parent_id: parentId,
           }),
         });
 
         if (!response.ok) {
-          throw new Error('Failed to post comment');
+          throw new Error("Failed to post comment");
         }
 
         // --- MODIFICATION ---
         // Success! Clear the main textarea and re-fetch *from page 1*
-        commentTextarea.value = '';
+        commentTextarea.value = "";
         currentPage = 1; // Reset to page 1
         await fetchAndRenderComments(1, false); // Fetch and *replace*
         // --- END MODIFICATION ---
-
       } catch (error) {
-        console.error('Error posting comment:', error);
-        alert('There was an error posting your comment.');
+        console.error("Error posting comment:", error);
+        alert("There was an error posting your comment.");
       }
     }
 
@@ -880,17 +839,21 @@
     function createCommentHTML(comment) {
       // Use $date for dates coming from json_util
       const date = new Date(comment.timestamp.$date);
-      const formattedDate = date.toLocaleString('en-US', {
-        month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      const formattedDate = date.toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       });
 
       // --- RECURSIVE PART ---
       // Generate HTML for all replies recursively
-      let repliesHTML = '';
+      let repliesHTML = "";
       if (comment.replies && comment.replies.length > 0) {
         repliesHTML = `
           <div class="mt-4">
-            ${comment.replies.map(createCommentHTML).join('')}
+            ${comment.replies.map(createCommentHTML).join("")}
           </div>
         `;
       }
@@ -927,7 +890,7 @@
      */
     function showReplyForm(parentId, parentElement) {
       // Remove any existing reply forms
-      const existingForm = document.getElementById('temp-reply-form');
+      const existingForm = document.getElementById("temp-reply-form");
       if (existingForm) {
         existingForm.remove();
       }
@@ -946,15 +909,15 @@
       `;
 
       // Find the reply-form-container *within* the parent element
-      const replyContainer = parentElement.querySelector('.reply-form-container');
+      const replyContainer = parentElement.querySelector(".reply-form-container");
       replyContainer.innerHTML = formHTML;
 
-      const tempForm = document.getElementById('temp-reply-form');
-      const tempTextarea = tempForm.querySelector('textarea');
+      const tempForm = document.getElementById("temp-reply-form");
+      const tempTextarea = tempForm.querySelector("textarea");
       tempTextarea.focus();
 
       // Handle submission
-      tempForm.addEventListener('submit', async (e) => {
+      tempForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const replyText = tempTextarea.value.trim();
         if (replyText) {
@@ -964,15 +927,15 @@
       });
 
       // Handle cancel
-      tempForm.querySelector('.cancel-reply').addEventListener('click', () => {
-        replyContainer.innerHTML = ''; // Just clear the container
+      tempForm.querySelector(".cancel-reply").addEventListener("click", () => {
+        replyContainer.innerHTML = ""; // Just clear the container
       });
     }
 
     // --- 3. EVENT LISTENERS ---
 
     // Handle top-level comment form submission
-    commentForm.addEventListener('submit', async (e) => {
+    commentForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const text = commentTextarea.value.trim();
       if (text) {
@@ -981,40 +944,40 @@
     });
 
     // Handle "Reply" button clicks using event delegation
-    commentsListContainer.addEventListener('click', (e) => {
-      const replyButton = e.target.closest('.reply-btn');
+    commentsListContainer.addEventListener("click", (e) => {
+      const replyButton = e.target.closest(".reply-btn");
       if (replyButton) {
         e.preventDefault();
         const parentId = replyButton.dataset.commentId;
-        const parentCommentBody = replyButton.closest('.flex-grow-1');
+        const parentCommentBody = replyButton.closest(".flex-grow-1");
         showReplyForm(parentId, parentCommentBody);
       }
     });
 
     // --- NEW: Add click listener for "Load More" button ---
-    loadMoreButton.addEventListener('click', () => {
+    loadMoreButton.addEventListener("click", () => {
       fetchAndRenderComments(currentPage + 1, true); // Fetch next page and append
     });
 
     async function fetchAndRenderTeam() {
       try {
         const response = await fetch(`/jobs/${jobId}/team`); // Call the new API endpoint
-        if (!response.ok) throw new Error('Failed to fetch team members');
+        if (!response.ok) throw new Error("Failed to fetch team members");
 
         const teamMembers = await response.json();
 
         // Clear the loading placeholder
-        teamMembersListContainer.innerHTML = '';
+        teamMembersListContainer.innerHTML = "";
 
         if (teamMembers.length === 0) {
           teamMembersListContainer.innerHTML = '<p class="text-muted fs-xxs text-center py-2">No members assigned.</p>';
         } else {
-          teamMembers.forEach(member => {
+          teamMembers.forEach((member) => {
             teamMembersListContainer.innerHTML += createTeamMemberHTML(member);
           });
         }
       } catch (error) {
-        console.error('Error fetching team members:', error);
+        console.error("Error fetching team members:", error);
         teamMembersListContainer.innerHTML = '<p class="text-danger fs-xxs text-center py-2">Could not load team.</p>';
       }
     }
@@ -1027,12 +990,12 @@
       // Use $oid for ID from json_util
       const memberId = member._id.$oid;
       // Use the placeholder if avatar_url is missing or empty
-      const avatarUrl = member.avatar_url || '{{ config.ASSETS_ROOT }}/images/users/user-placeholder.jpg';
+      const avatarUrl = member.avatar_url || "{{ config.ASSETS_ROOT }}/images/users/user-placeholder.jpg";
       // Provide a default role if missing
-      const memberRole = member.role || 'Team Member';
+      const memberRole = member.role || "Team Member";
 
       // NOTE: Using placeholder avatar for now as requested
-      const displayAvatarUrl = '{{ config.ASSETS_ROOT }}/images/users/user-10.jpg';
+      const displayAvatarUrl = "{{ config.ASSETS_ROOT }}/images/users/user-10.jpg";
 
       return `
         <div class="d-flex justify-content-between align-items-center pb-2">
@@ -1056,11 +1019,241 @@
       `;
     }
 
+    // --- 3. FILE UPLOAD ---
+    function getFileIconClass(contentType, filename) {
+      const extension = filename.split(".").pop().toLowerCase();
+
+      if (contentType.startsWith("image/")) return "ti ti-photo";
+      if (contentType.startsWith("video/")) return "ti ti-video";
+      if (contentType.startsWith("audio/")) return "ti ti-file-music";
+      if (contentType === "application/pdf") return "ti ti-file-type-pdf";
+      if (["zip", "rar", "7z", "tar", "gz"].includes(extension)) return "ti ti-file-zip";
+      if (["doc", "docx"].includes(extension)) return "ti ti-file-type-doc";
+      if (["xls", "xlsx"].includes(extension)) return "ti ti-file-type-xls";
+      if (["ppt", "pptx"].includes(extension)) return "ti ti-file-type-ppt";
+      if (
+        ["js", "jsx", "ts", "tsx", "py", "java", "c", "cpp", "cs", "html", "css", "scss", "json", "xml"].includes(
+          extension
+        )
+      )
+        return "ti ti-file-code";
+
+      return "ti ti-file-text"; // Default icon
+    }
+
+    /**
+     * Formats file size into human-readable string (KB, MB).
+     * @param {number} bytes - File size in bytes.
+     * @returns {string} - Formatted size string.
+     */
+    function formatFileSize(bytes) {
+      if (bytes === 0) return "0 Bytes";
+      const k = 1024;
+      const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+    }
+
+    /**
+     * Fetches the list of files for the job and renders them.
+     */
+    async function fetchAndRenderFiles() {
+      try {
+        jobFilesListContainer.innerHTML = '<div class="text-center py-2 text-muted">Loading files...</div>'; // Show loading
+        const response = await fetch(`/jobs/${jobId}/files`);
+        if (!response.ok) throw new Error("Failed to fetch files");
+
+        const files = await response.json();
+
+        jobFilesListContainer.innerHTML = ""; // Clear loading/previous
+
+        if (files.length === 0) {
+          jobFilesListContainer.innerHTML = '<p class="text-muted fs-xxs text-center py-2">No files uploaded.</p>';
+        } else {
+          files.forEach((file) => {
+            jobFilesListContainer.innerHTML += createFileHTML(file);
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching files:", error);
+        jobFilesListContainer.innerHTML = '<p class="text-danger fs-xxs text-center py-2">Could not load files.</p>';
+      }
+    }
+
+    /**
+     * Creates the HTML for a single file item.
+     * @param {object} fileData - The file metadata object from the API.
+     */
+    function createFileHTML(fileData) {
+      const fileId = fileData._id.$oid;
+      const iconClass = getFileIconClass(fileData.content_type, fileData.original_filename);
+      const formattedSize = formatFileSize(fileData.size);
+      const downloadUrl = `/jobs/files/${fileId}/download`; // Link to the download route
+
+      // Optional: Add delete button later
+      // <a href="#" class="btn btn-sm btn-icon btn-ghost-danger delete-file-btn" title="Delete File" data-file-id="${fileId}"><i class="ti ti-trash fs-lg"></i></a>
+      const deleteButtonHTML = `
+            <button type="button" class="btn btn-sm btn-icon btn-ghost-danger delete-file-btn" title="Delete File" data-file-id="${fileId}">
+                <i class="ti ti-trash fs-lg"></i>
+            </button>
+        `;
+      return `
+            <div class="d-flex justify-content-between align-items-center pb-2">
+              <div class="d-flex align-items-center py-1 gap-2" style="min-width: 0;">
+                <div class="flex-shrink-0 avatar-md bg-light bg-opacity-50 text-muted rounded-2 d-flex align-items-center justify-content-center">
+                  <i class="${iconClass} fs-xl avatar-title"></i>
+                </div>
+                <div class="flex-grow-1" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                  <h5 class="mb-1 fs-base"><a href="${downloadUrl}" class="link-reset" title="${fileData.original_filename}">${fileData.original_filename}</a></h5>
+                  <p class="text-muted mb-0 fs-xs">${formattedSize}</p>
+                </div>
+              </div>
+              <div class="flex-shrink-0 d-flex gap-1"> 
+                <a href="${downloadUrl}" class="btn btn-sm btn-icon btn-default" title="Download">
+                  <i class="ti ti-download fs-lg"></i>
+                </a>
+                ${deleteButtonHTML} 
+              </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Uploads a single file using Fetch API.
+     * @param {File} file - The file object to upload.
+     */
+    async function uploadFile(file) {
+      const formData = new FormData();
+      formData.append("file", file); // 'file' must match the key expected by Flask (request.files['file'])
+
+      fileUploadStatusDiv.style.display = "block";
+      fileUploadMessage.textContent = `Uploading ${file.name}...`;
+      fileUploadProgressBar.style.width = "0%";
+      fileUploadProgressBar.setAttribute("aria-valuenow", 0);
+
+      try {
+        // Note: We don't set Content-Type header when sending FormData,
+        // the browser does it automatically with the correct boundary.
+        const response = await fetch(`/jobs/${jobId}/files`, {
+          method: "POST",
+          body: formData,
+          // Add progress tracking if needed (more complex)
+        });
+
+        if (!response.ok) {
+          const errorData = await response
+            .json()
+            .catch(() => ({ error: "Upload failed with status " + response.status }));
+          throw new Error(errorData.error || "Upload failed");
+        }
+
+        const newFileData = await response.json();
+
+        // Success: Add the new file to the top of the list
+        const newFileHTML = createFileHTML(newFileData);
+        jobFilesListContainer.insertAdjacentHTML("afterbegin", newFileHTML);
+
+        // If it was empty before, remove the "No files" message
+        const noFilesMsg = jobFilesListContainer.querySelector("p.text-muted");
+        if (noFilesMsg && noFilesMsg.textContent.includes("No files")) {
+          noFilesMsg.remove();
+        }
+
+        fileUploadMessage.textContent = `Uploaded ${file.name} successfully.`;
+        fileUploadProgressBar.style.width = "100%"; // Show completion briefly
+        setTimeout(() => {
+          fileUploadStatusDiv.style.display = "none";
+        }, 2000); // Hide after 2s
+      } catch (error) {
+        console.error("Error uploading file:", error);
+        fileUploadMessage.textContent = `Error uploading ${file.name}: ${error.message}`;
+        fileUploadProgressBar.style.width = "100%"; // Indicate error visually
+        fileUploadProgressBar.classList.add("bg-danger");
+        // Don't hide the error immediately
+        setTimeout(() => {
+          fileUploadStatusDiv.style.display = "none";
+          fileUploadProgressBar.classList.remove("bg-danger"); // Reset color
+        }, 5000); // Hide after 5s
+      } finally {
+        // Reset file input to allow uploading the same file again
+        jobFileInput.value = "";
+      }
+    }
+
+    /**
+     * Deletes a file by its ID.
+     * @param {string} fileId - The ID of the file to delete.
+     * @param {HTMLElement} fileElement - The DOM element representing the file item.
+     */
+    async function deleteFile(fileId, fileElement) {
+      // Optional: Show some loading indicator on the element
+      fileElement.style.opacity = "0.5";
+
+      try {
+        const response = await fetch(`/jobs/files/${fileId}`, {
+          method: "DELETE",
+        });
+
+        if (!response.ok) {
+          const errorData = await response
+            .json()
+            .catch(() => ({ error: "Delete failed with status " + response.status }));
+          throw new Error(errorData.error || "Delete failed");
+        }
+
+        // Success: Remove the file element from the DOM
+        fileElement.remove();
+
+        // Optional: Show a success message (e.g., using a toast library)
+        console.log(`File ${fileId} deleted successfully.`);
+
+        // Check if the list is now empty
+        if (jobFilesListContainer.children.length === 0) {
+          jobFilesListContainer.innerHTML = '<p class="text-muted fs-xxs text-center py-2">No files uploaded.</p>';
+        }
+      } catch (error) {
+        console.error("Error deleting file:", error);
+        alert(`Failed to delete file: ${error.message}`);
+        // Restore opacity if delete failed
+        fileElement.style.opacity = "1";
+      }
+    }
+
+    // Trigger hidden file input when '+' button is clicked
+    addFileBtn.addEventListener("click", () => {
+      jobFileInput.click();
+    });
+
+    // Handle file selection
+    jobFileInput.addEventListener("change", (event) => {
+      const files = event.target.files;
+      if (files.length > 0) {
+        // Upload each selected file
+        Array.from(files).forEach((file) => {
+          uploadFile(file); // Call the upload function for each file
+        });
+      }
+    });
+
+    // --- UNCOMMENT AND VERIFY Delete File listener ---
+    jobFilesListContainer.addEventListener("click", async (e) => {
+      const deleteButton = e.target.closest(".delete-file-btn");
+      if (deleteButton) {
+        e.preventDefault();
+        const fileId = deleteButton.dataset.fileId;
+        // Find the closest parent div that represents the whole file item
+        const fileElement = deleteButton.closest(".d-flex.justify-content-between");
+        if (confirm("Are you sure you want to delete this file?")) {
+          await deleteFile(fileId, fileElement); // Pass element to remove
+        }
+      }
+    });
+
     // --- 4. INITIAL LOAD ---
     fetchAndRenderComments(1, false); // Fetch page 1 and replace
     fetchAndRenderTeam(); // Fetch and render team members
+    fetchAndRenderFiles(); // Fetch and render job files
   });
-
 </script>
 
 {% endblock page_content %}

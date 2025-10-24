@@ -1,0 +1,399 @@
+{% extends 'layouts/vertical.html' %} {% block title %}Manage Machines{% endblock title %} {% block extra_css %}
+
+<style>
+  .status-select-badge {
+    border: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+
+    /* 1. Set a single, larger font size (12px) */
+    font-size: 0.75rem;
+    font-weight: 500; /* 700 was a bit too bold */
+    line-height: 1.5;
+
+    /* 2. Custom padding and arrow */
+    padding: 0.3em 1.75em 0.3em 0.75em; /* top/bottom, right (for arrow), left */
+    background-color: transparent !important;
+
+    /* 3. Add custom arrow icon */
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.5em center;
+    background-size: 1em;
+  }
+
+  /* Keep the badge colors */
+  .status-select-badge.badge-soft-success {
+    color: #0acf97;
+  }
+  .status-select-badge.badge-soft-secondary {
+    color: #6c757d;
+  }
+  .status-select-badge.badge-soft-info {
+    color: #39afd1;
+  }
+  .status-select-badge.badge-soft-danger {
+    color: #f1556c;
+  }
+
+  /* Color the arrow based on the badge color */
+  .status-select-badge.badge-soft-success {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%230acf97' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  }
+  .status-select-badge.badge-soft-secondary {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%236c757d' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  }
+  .status-select-badge.badge-soft-info {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2339afd1' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  }
+  .status-select-badge.badge-soft-danger {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23f1556c' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  }
+
+  /* Set background on hover/focus to show it's interactive */
+  .status-select-badge:hover,
+  .status-select-badge:focus {
+    background-color: #e5ebf0 !important;
+    box-shadow: none;
+    outline: none;
+  }
+</style>
+
+{% endblock extra_css %} {% block page_content %}
+<div class="container-fluid">
+  {% set title='Manage Machines' %} {% set subtitle='Machines' %} {% include 'partials/page-title.html' %}
+
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <div class="row row-cols-xxl-4 row-cols-md-2 row-cols-1 g-3 align-items-center">
+            <div class="col">
+              <div class="card border-0 bg-success bg-opacity-10 shadow-none mb-0">
+                <div class="card-body">
+                  <h5 title="Operating Machines">Operating</h5>
+                  <div class="d-flex align-items-center gap-2 my-3">
+                    <div class="avatar-md flex-shrink-0">
+                      <span class="avatar-title text-bg-success bg-opacity-90 rounded-circle fs-22">
+                        <i class="ti ti-activity"></i>
+                      </span>
+                    </div>
+                    <h3 class="mb-0">{{ stats.operating }}</h3>
+                  </div>
+                  <p class="mb-0">
+                    <span class="text-success"><i class="ti ti-point-filled"></i></span>
+                    <span class="text-nowrap text-muted">Total Machines</span>
+                    <span class="float-end"><b>{{ stats.total }}</b></span>
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card border-0 bg-secondary bg-opacity-10 shadow-none mb-0">
+                <div class="card-body">
+                  <h5 title="Idle Machines">Idle / Standby</h5>
+                  <div class="d-flex align-items-center gap-2 my-3">
+                    <div class="avatar-md flex-shrink-0">
+                      <span class="avatar-title text-bg-secondary bg-opacity-90 rounded-circle fs-22">
+                        <i class="ti ti-player-pause"></i>
+                      </span>
+                    </div>
+                    <h3 class="mb-0">{{ stats.idle }}</h3>
+                  </div>
+                  <p class="mb-0">
+                    <span class="text-secondary"><i class="ti ti-point-filled"></i></span>
+                    <span class="text-nowrap text-muted">Available</span>
+                    <span class="float-end"><b>{{ stats.operating + stats.idle }}</b></span>
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card border-0 bg-info bg-opacity-10 shadow-none mb-0">
+                <div class="card-body">
+                  <h5 title="Machines Under Maintenance">Under Maintenance</h5>
+                  <div class="d-flex align-items-center gap-2 my-3">
+                    <div class="avatar-md flex-shrink-0">
+                      <span class="avatar-title text-bg-info bg-opacity-90 rounded-circle fs-22">
+                        <i class="ti ti-tool"></i>
+                      </span>
+                    </div>
+                    <h3 class="mb-0">{{ stats.maintenance }}</h3>
+                  </div>
+                  <p class="mb-0">
+                    <span class="text-info"><i class="ti ti-point-filled"></i></span>
+                    <span class="text-nowrap text-muted">High Criticality</span>
+                    <span class="float-end"><b>{{ stats.high_criticality }}</b></span>
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card border-0 bg-danger bg-opacity-10 shadow-none mb-0">
+                <div class="card-body">
+                  <h5 title="Out of Service Machines">Out of Service</h5>
+                  <div class="d-flex align-items-center gap-2 my-3">
+                    <div class="avatar-md flex-shrink-0">
+                      <span class="avatar-title text-bg-danger bg-opacity-90 rounded-circle fs-22">
+                        <i class="ti ti-alert-triangle"></i>
+                      </span>
+                    </div>
+                    <h3 class="mb-0">{{ stats.out_of_service }}</h3>
+                  </div>
+                  <p class="mb-0">
+                    <span class="text-danger"><i class="ti ti-point-filled"></i></span>
+                    <span class="text-nowrap text-muted">Unavailable</span>
+                    <span class="float-end"><b>{{ stats.maintenance + stats.out_of_service }}</b></span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      <div data-table data-table-rows-per-page="10" class="card">
+        <div class="card-header">
+          <h4 class="card-title">All Machines</h4>
+        </div>
+
+        <div class="card-header border-light justify-content-between">
+          <div class="d-flex gap-2">
+            <div class="app-search">
+              <input data-table-search type="search" class="form-control" placeholder="Search machines..." />
+              <i data-lucide="search" class="app-search-icon text-muted"></i>
+            </div>
+            <button data-table-delete-selected class="btn btn-danger d-none">Delete Selected</button>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="me-2 fw-semibold">Filter By:</span>
+            <div class="app-search">
+              <select data-table-filter="division" class="form-select form-control my-1 my-md-0">
+                <option value="All">All Tags</option>
+                {% for tag in all_tags %}
+                <option value="{{ tag }}">{{ tag }}</option>
+                {% endfor %}
+              </select>
+              <i data-lucide="tag" class="app-search-icon text-muted"></i>
+            </div>
+            <div class="app-search">
+              <select data-table-filter="status" class="form-select form-control my-1 my-md-0">
+                <option value="All">All Statuses</option>
+                {% for status in status_list %}
+                <option value="{{ status.value }}">{{ status.name }}</option>
+                {% endfor %}
+              </select>
+              <i data-lucide="box" class="app-search-icon text-muted"></i>
+            </div>
+            <div>
+              <select data-table-set-rows-per-page class="form-select form-control my-1 my-md-0">
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
+                <option value="15">15</option>
+                <option value="20">20</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-custom table-centered table-select table-hover w-100 mb-0">
+            <thead class="bg-light align-middle bg-opacity-25 thead-sm">
+              <tr class="text-uppercase fs-xxs">
+                <th class="ps-3" style="width: 1%">
+                  <input
+                    data-table-select-all
+                    class="form-check-input form-check-input-light fs-14 mt-0"
+                    type="checkbox"
+                    value="option"
+                  />
+                </th>
+                <th data-table-sort="machine_name">Machine Name</th>
+                <th data-table-sort="asset_id">Asset ID</th>
+                <th data-table-sort data-column="status">Status</th>
+                <th data-table-sort data-column="criticality">Criticality</th>
+                <th data-table-sort="manufacturer">Manufacturer</th>
+                <th data-column="division">Tags</th>
+                <th data-table-sort="created_at">Registered On</th>
+                <th class="text-center" style="width: 1%">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for machine in machines_list %}
+              <tr>
+                <td class="ps-3">
+                  <input
+                    class="form-check-input form-check-input-light fs-14 product-item-check mt-0"
+                    type="checkbox"
+                    value="option"
+                  />
+                </td>
+                <td>
+                  <div class="d-flex">
+                    <div class="avatar-md me-3">
+                      <span class="avatar-title bg-soft-secondary text-secondary rounded fs-20">
+                        <i class="ti ti-settings"></i>
+                      </span>
+                    </div>
+                    <div>
+                      <h5 class="mb-1">
+                        <a data-sort="machine_name" href="#" class="link-reset">{{ machine.machine_name }}</a>
+                      </h5>
+                      <p class="text-muted mb-0 fs-xxs">by: {{ machine.manufacturer | default('N/A') }}</p>
+                    </div>
+                  </div>
+                </td>
+                <td>{{ machine.asset_id }}</td>
+
+                <td data-column="status">
+                  <select
+                    class="form-select form-select-sm status-select-badge machine-status-select {% if machine.current_status == 'operating' %}badge-soft-success {% elif machine.current_status == 'idle' %}badge-soft-secondary {% elif machine.current_status == 'under_maintenance' %}badge-soft-info {% else %}badge-soft-danger {% endif %}"
+                    data-machine-id="{{ machine._id }}"
+                    data-current-status="{{ machine.current_status }}"
+                  >
+                    {% for status in status_list %} {% if machine.current_status == status.value %}
+                    <option value="{{ status.value }}" selected>{{ status.name }}</option>
+                    {% else %}
+                    <option value="{{ status.value }}">{{ status.name }}</option>
+                    {% endif %} {% endfor %}
+                  </select>
+                </td>
+                <td data-column="criticality">
+                  {% if machine.criticality == "high" %}
+                  <span class="badge badge-soft-danger fs-xxs">High</span>
+                  {% elif machine.criticality == "medium" %}
+                  <span class="badge badge-soft-warning fs-xxs">Medium</span>
+                  {% else %}
+                  <span class="badge badge-soft-secondary fs-xxs">Low</span>
+                  {% endif %}
+                </td>
+                <td>{{ machine.manufacturer | default('N/A') }}</td>
+
+                <td data-divisions="{% for tag in machine.tags %}|{{ tag }}|{% endfor %}">
+                  {% for tag in machine.tags %}
+                  <span class="badge badge-soft-info me-1 fs-xxs">{{ tag }}</span>
+                  {% else %}
+                  <span class="text-muted fs-xxs">No tags</span>
+                  {% endfor %}
+                </td>
+
+                <td data-sort="created_at">
+                  {{ machine.created_at.strftime('%d %b, %Y') }}
+                  <small class="text-muted">{{ machine.created_at.strftime('%I:%M %p') }}</small>
+                </td>
+                <td>
+                  <div class="d-flex justify-content-center gap-1">
+                    <a
+                      href="{{ url_for('machines.machine_details', machine_id=machine._id) }}"
+                      class="btn btn-light btn-icon btn-sm rounded-circle"
+                    >
+                      <i class="ti ti-eye fs-lg"></i>
+                    </a>
+                    <a href="#" class="btn btn-light btn-icon btn-sm rounded-circle">
+                      <i class="ti ti-edit fs-lg"></i>
+                    </a>
+                    <a href="#" data-table-delete-row class="btn btn-danger btn-icon btn-sm rounded-circle">
+                      <i class="ti ti-trash fs-lg"></i>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer border-0">
+          <div class="d-flex justify-content-between align-items-center">
+            <div data-table-pagination-info="machines"></div>
+            <div data-table-pagination></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock page_content %} {% block extra_javascript %}
+<script src="{{ config.ASSETS_ROOT }}/js/pages/custom-table.js"></script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // Helper function to change the badge color of the select
+    function updateBadgeStyle(selectElement, newStatus) {
+      // Remove old status classes
+      selectElement.classList.remove(
+        "badge-soft-success",
+        "badge-soft-secondary",
+        "badge-soft-info",
+        "badge-soft-danger"
+      );
+
+      // Add new one
+      if (newStatus === "operating") {
+        selectElement.classList.add("badge-soft-success");
+      } else if (newStatus === "idle") {
+        selectElement.classList.add("badge-soft-secondary");
+      } else if (newStatus === "under_maintenance") {
+        selectElement.classList.add("badge-soft-info");
+      } else if (newStatus === "out_of_service") {
+        selectElement.classList.add("badge-soft-danger");
+      }
+    }
+
+    // Find all status dropdowns
+    const statusSelects = document.querySelectorAll(".machine-status-select");
+
+    statusSelects.forEach((selectElement) => {
+      selectElement.addEventListener("change", function (event) {
+        const newStatus = event.target.value;
+        const machineId = event.target.dataset.machineId;
+        const oldStatus = event.target.dataset.currentStatus;
+
+        // Send the update to the server
+        fetch("/machines/update-status", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            // Add any other required headers, like CSRF tokens if you use them
+          },
+          body: JSON.stringify({
+            machine_id: machineId,
+            new_status: newStatus,
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              // Update the 'current' status for reversion tracking
+              event.target.dataset.currentStatus = newStatus;
+              // Update the visual style
+              updateBadgeStyle(event.target, newStatus);
+
+              // Re-run the table filter to ensure data-column is updated
+              // This is a bit advanced; for now, we just update the visual.
+              // If you have `window.customTable`, you could force an update.
+
+              console.log("Status updated successfully");
+              // You could add a small toast notification here
+            } else {
+              console.error("Update failed:", data.error);
+              alert("Error: Could not update status. " + data.error);
+              // Revert selection
+              event.target.value = oldStatus;
+            }
+          })
+          .catch((error) => {
+            console.error("Fetch Error:", error);
+            alert("Error: A network error occurred.");
+            // Revert selection
+            event.target.value = oldStatus;
+          });
+      });
+    });
+  });
+</script>
+{% endblock extra_javascript %}

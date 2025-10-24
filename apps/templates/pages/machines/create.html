@@ -1,0 +1,620 @@
+{% extends 'layouts/vertical.html' %} {% block title %}Create Machine{% endblock title %} {% block extra_css %}
+
+<link rel="stylesheet" href="{{ config.ASSETS_ROOT }}/plugins/daterangepicker/daterangepicker.css" type="text/css" />
+<link rel="stylesheet" href="{{ config.ASSETS_ROOT }}/plugins/choices/choices.min.css" />
+<link href="{{ config.ASSETS_ROOT }}/plugins/quill/quill.core.css" rel="stylesheet" type="text/css" />
+<link href="{{ config.ASSETS_ROOT }}/plugins/quill/quill.snow.css" rel="stylesheet" type="text/css" />
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@yaireo/tagify@4.35.1/dist/tagify.min.css" />
+
+<style>
+  /* * Add this CSS to a custom stylesheet or within a <style> tag in your extra_css block 
+   */
+  .tall-input {
+    /* * Adjust this height (in pixels) until it visually matches the height 
+     * of your Choices.js multiple-select box. 
+     */
+    height: 46px !important;
+  }
+
+  .choices.is-invalid .choices__inner {
+    border-color: #f1556c; /* Bootstrap's danger color */
+  }
+
+  /* Add red border to invalid Tagify container */
+  tagify.is-invalid + .tagify {
+    border-color: #f1556c;
+  }
+
+  .choices.choices.is-invalid {
+    margin-bottom: 0px !important;
+  }
+
+  .choices.is-valid .choices__inner {
+    border-color: #0acf97; /* Bootstrap's success color */
+  }
+
+  .choices {
+    margin-bottom: 0px !important;
+  }
+
+  /* Updated validation for our new Quill editor */
+  .was-validated #quill-notes:has(+ #notes:invalid) .ql-container {
+    border-color: #f1556c !important; /* Bootstrap's danger color */
+  }
+</style>
+
+{% endblock extra_css %} {% block page_content %}
+
+<div class="container-fluid">
+  {% set title='Create Machine' %} {% set subtitle='Machines' %} {% include 'partials/page-title.html' %}
+
+  <div class="row justify-content-start">
+    <div class="col-xxl-8">
+      <div class="card">
+        <div class="card-header"><h4 class="card-title">Register New Machine</h4></div>
+        <div class="card-body">
+          <div class="tab-content" data-wizard-content>
+            <form id="createMachineForm" method="POST" enctype="multipart/form-data" novalidate>
+              <div class="tab-pane fade show active" id="machineInfo">
+                <h5 class="fw-semibold mb-3">Core Identification</h5>
+                <div class="row">
+                  {# MACHINE NAME #}
+                  <div class="col-xl-6">
+                    <div class="mb-3">
+                      <label class="form-label">Machine Name</label>
+                      <input
+                        type="text"
+                        class="form-control tall-input"
+                        placeholder="e.g., Main Air Compressor"
+                        name="machine_name"
+                        required
+                      />
+                      <div class="invalid-feedback">Please provide a Machine Name.</div>
+                    </div>
+                  </div>
+
+                  {# ASSET ID / SERIAL NUMBER #}
+                  <div class="col-xl-6">
+                    <div class="mb-3">
+                      <label class="form-label">Asset ID / Serial Number</label>
+                      <input
+                        type="text"
+                        class="form-control tall-input"
+                        placeholder="e.g., AC-1001 or S/N 987654"
+                        name="asset_id"
+                        required
+                      />
+                      <div class="invalid-feedback">Please provide a unique Asset ID or Serial Number.</div>
+                    </div>
+                  </div>
+
+                  {# CURRENT STATUS #}
+                  <div class="col-xl-12">
+                    <div class="mb-3">
+                      <label for="current_status" class="form-label">Current Status</label>
+                      <select
+                        class="form-select choices-js-required"
+                        id="current_status"
+                        name="current_status"
+                        data-choices
+                        required
+                      >
+                        <option value="operating" selected>Operating</option>
+                        <option value="under_maintenance">Under Maintenance</option>
+                        <option value="out_of_service">Out of Service</option>
+                      </select>
+                      <div class="invalid-feedback">Please select a status.</div>
+                    </div>
+                  </div>
+                </div>
+
+                {# --- DIVIDER --- #}
+                <div class="my-3 border-top border-dashed"></div>
+                <h5 class="fw-semibold mb-3">Classification</h5>
+                <div class="row">
+                  {# CRITICALITY #}
+                  <div class="col-xl-6">
+                    <div class="mb-3">
+                      <label for="criticality" class="form-label">Criticality</label>
+                      <select
+                        class="form-select choices-js-required"
+                        id="criticality"
+                        name="criticality"
+                        data-choices
+                        required
+                      >
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                        <option value="low">Low</option>
+                      </select>
+                      <div class="invalid-feedback">Please set a criticality level.</div>
+                    </div>
+                  </div>
+                </div>
+
+                {# TAGS #}
+                <div class="col-xl-12">
+                  <div class="mb-3">
+                    <label class="form-label">Tags</label>
+                    <div>
+                      <input
+                        id="machineTagify"
+                        class="form-control mb-2"
+                        name="tags"
+                        placeholder="Type (e.g., HVAC, Pump) and press enter"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {# --- DIVIDER --- #}
+                <div class="my-3 border-top border-dashed"></div>
+                <h5 class="fw-semibold mb-3">Manufacturer Details</h5>
+                <div class="row">
+                  {# MANUFACTURER #}
+                  <div class="col-xl-6">
+                    <div class="mb-3">
+                      <label class="form-label">Manufacturer</label>
+                      <input
+                        type="text"
+                        class="form-control tall-input"
+                        placeholder="e.g., Siemens, Caterpillar"
+                        name="manufacturer"
+                      />
+                    </div>
+                  </div>
+                  {# MODEL NUMBER #}
+                  <div class="col-xl-6">
+                    <div class="mb-3">
+                      <label class="form-label">Model Number</label>
+                      <input
+                        type="text"
+                        class="form-control tall-input"
+                        placeholder="e.g., S7-1500, 3516B"
+                        name="model_number"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {# --- DIVIDER --- #}
+                <div class="my-3 border-top border-dashed"></div>
+                <h5 class="fw-semibold mb-3">Lifecycle</h5>
+                <div class="row">
+                  {# INSTALLATION DATE #}
+                  <div class="col-xl-6">
+                    <div class="mb-3">
+                      <label class="form-label">Installation Date</label>
+                      <input
+                        type="text"
+                        class="form-control date tall-input"
+                        id="installation_date"
+                        name="installation_date"
+                        data-toggle="date-picker"
+                        data-single-date-picker="true"
+                        placeholder="Select install date"
+                        data-locale="{'format': 'MM/DD/YYYY'}"
+                      />
+                    </div>
+                  </div>
+
+                  {# WARRANTY EXPIRY DATE #}
+                  <div class="col-xl-6">
+                    <div class="mb-3">
+                      <label class="form-label">Warranty Expiry Date</label>
+                      <input
+                        type="text"
+                        class="form-control date tall-input"
+                        id="warranty_expiry_date"
+                        name="warranty_expiry_date"
+                        data-toggle="date-picker"
+                        data-single-date-picker="true"
+                        placeholder="Select expiry date"
+                        data-locale="{'format': 'MM/DD/YYYY'}"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {# --- DIVIDER --- #}
+                <div class="my-3 border-top border-dashed"></div>
+                <h5 class="fw-semibold mb-3">Maintenance Schedule</h5>
+                <div class="row">
+                  {# MAINTENANCE TRIGGER #}
+                  <div class="col-xl-12">
+                    <div class="mb-3">
+                      <label for="maintenance_trigger" class="form-label">Maintenance Trigger</label>
+                      <select
+                        class="form-select choices-js-required"
+                        id="maintenance_trigger"
+                        name="maintenance_trigger"
+                        data-choices
+                        required
+                      >
+                        <option value="" disabled selected>Select trigger type</option>
+                        <option value="time_based">Time-Based (Calendar)</option>
+                        <option value="usage_based">Usage-Based (Meter)</option>
+                      </select>
+                      <div class="invalid-feedback">Please select a maintenance trigger.</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="time_based_fields" style="display: none">
+                  <div class="row">
+                    <div class="col-xl-6">
+                      <label class="form-label">Routine Maintenance Gap</label>
+                      <div class="input-group mb-3">
+                        <input
+                          type="number"
+                          class="form-control tall-input"
+                          placeholder="e.g., 90"
+                          name="time_gap"
+                          min="1"
+                        />
+                        <select class="form-select" name="time_gap_unit" style="max-width: 120px">
+                          <option value="days" selected>Days</option>
+                          <option value="weeks">Weeks</option>
+                          <option value="months">Months</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="col-xl-6">
+                      <div class="mb-3">
+                        <label class="form-label">Next Maintenance Date</label>
+                        <input
+                          type="text"
+                          class="form-control date tall-input"
+                          id="next_maintenance_date"
+                          name="next_maintenance_date"
+                          data-toggle="date-picker"
+                          data-single-date-picker="true"
+                          placeholder="Select next PM date"
+                          data-locale="{'format': 'MM/DD/YYYY'}"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div id="usage_based_fields" style="display: none">
+                  <div class="row">
+                    <div class="col-xl-4">
+                      <div class="mb-3">
+                        <label class="form-label">Routine Maintenance Gap</label>
+                        <input
+                          type="number"
+                          class="form-control tall-input"
+                          placeholder="e.g., 1000"
+                          name="usage_gap"
+                          min="1"
+                        />
+                      </div>
+                    </div>
+                    <div class="col-xl-4">
+                      <div class="mb-3">
+                        <label class="form-label">Meter Unit</label>
+                        <select class="form-select" id="meter_unit" data-choices name="meter_unit">
+                          <option value="" disabled selected>Select unit</option>
+                          {% for unit in meter_units_list %}
+                          <option value="{{ unit.value }}">{{ unit.name }}</option>
+                          {% endfor %}
+                        </select>
+                      </div>
+                    </div>
+                    <div class="col-xl-4">
+                      <div class="mb-3">
+                        <label class="form-label">Current Meter Reading</label>
+                        <input
+                          type="number"
+                          class="form-control tall-input"
+                          placeholder="e.g., 4350"
+                          name="current_meter_reading"
+                          min="0"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {# --- DIVIDER --- #}
+                <div class="my-3 border-top border-dashed"></div>
+                <h5 class="fw-semibold mb-3">Notes & Attachments</h5>
+                <div class="row">
+                  {# NOTES (QUILL) #}
+                  <div class="col-xl-12">
+                    <div class="mb-3">
+                      <label class="form-label">Notes</label>
+                      <div id="quill-notes" style="height: 250px"></div>
+                      <input type="hidden" name="notes" id="notes" />
+                    </div>
+                  </div>
+
+                  {# FILE ATTACHMENTS #}
+                  <div class="col-xl-12">
+                    <div class="mb-3">
+                      <label for="attachments" class="form-label">Manuals, Photos, etc.</label>
+                      <input class="form-control" type="file" id="attachments" name="attachments" multiple />
+                    </div>
+                  </div>
+                </div>
+
+                {# --- SUBMIT BUTTON --- #}
+                <div class="d-flex justify-content-start mt-3">
+                  <button type="submit" class="btn btn-primary">Create Machine</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {# SIDEBAR: EXISTING MACHINES TABLE #}
+    <div class="col-xxl-4">
+      <div data-table data-table-rows-per-page="10" class="card">
+        <div class="card-header">
+          <h4 class="card-title">Existing Machines</h4>
+        </div>
+
+        <div class="card-header border-light justify-content-between">
+          <div class="d-flex gap-2">
+            <div class="app-search">
+              <input data-table-search type="search" class="form-control" placeholder="Search machines..." />
+              <i data-lucide="search" class="app-search-icon text-muted"></i>
+            </div>
+          </div>
+
+          <div>
+            <select data-table-set-rows-per-page class="form-select form-control my-1 my-md-0">
+              <option value="5">5</option>
+              <option value="10" selected>10</option>
+              <option value="15">15</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-custom table-centered table-hover w-100 mb-0">
+            <thead class="bg-light align-middle bg-opacity-25 thead-sm">
+              <tr class="text-uppercase fs-xxs">
+                <th>Asset ID</th>
+                <th>Machine Name</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="machines_tbody">
+              {% for machine in machines_list %}
+              <tr>
+                <td>
+                  <a href="#" class="link-reset fw-semibold">{{ machine.asset_id }}</a>
+                </td>
+                <td>
+                  <h5 class="mb-1 fs-sm fw-normal">{{ machine.machine_name }}</h5>
+                  <small class="text-muted"></small>
+                </td>
+                <td>
+                  {% if machine.current_status == "operating" %}
+                  <span class="badge badge-soft-success fs-xxs">Operating</span>
+                  {% elif machine.current_status == "idle" %}
+                  <span class="badge badge-soft-secondary fs-xxs">Idle</span>
+                  {% elif machine.current_status == "under_maintenance" %}
+                  <span class="badge badge-soft-info fs-xxs">Maintenance</span>
+                  {% else %}
+                  <span class="badge badge-soft-danger fs-xxs">Out of Service</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer border-0">
+          <div class="d-flex justify-content-end align-items-center">
+            <div data-table-pagination></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock page_content %} {% block extra_javascript %} {# PLUGINS #}
+
+<script src="{{ config.ASSETS_ROOT }}/plugins/moment/moment.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/plugins/daterangepicker/daterangepicker.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/plugins/choices/choices.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify@4.35.1/dist/tagify.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/plugins/quill/quill.js"></script>
+
+{# CUSTOM JS #}
+<script src="{{ config.ASSETS_ROOT }}/js/pages/custom-table.js"></script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // === Initialize Choices.js ===
+    // We target all elements with data-choices attribute
+    const choicesElements = document.querySelectorAll("[data-choices]");
+    let choiceInstances = {}; // Store instances
+    choicesElements.forEach((el) => {
+      const instance = new Choices(el, {
+        removeItemButton: el.hasAttribute("data-choices-removeItem"),
+        searchEnabled: true,
+        shouldSort: false,
+      });
+      // Store the instance using the element's id
+      if (el.id) {
+        choiceInstances[el.id] = instance;
+      }
+    });
+
+    // === Initialize Tagify ===
+    const tagifyInput = document.querySelector("#machineTagify");
+    if (tagifyInput) {
+      new Tagify(tagifyInput);
+    }
+
+    // === Initialize Daterangepickers (as single date pickers) ===
+    const datePickers = document.querySelectorAll('[data-toggle="date-picker"]');
+    datePickers.forEach(function (picker) {
+      let config = {
+        singleDatePicker: true,
+        autoUpdateInput: false, // Don't auto-fill on load
+        locale: {
+          format: "MM/DD/YYYY",
+          cancelLabel: "Clear",
+        },
+      };
+
+      // Check for time picker option from data attribute
+      if (picker.dataset.timePicker === "true") {
+        config.timePicker = true;
+        config.locale.format = picker.dataset.locale
+          ? JSON.parse(picker.dataset.locale.replace(/'/g, '"')).format
+          : "MM/DD/YYYY hh:mm A";
+      }
+
+      // Handle stringified locale object safely
+      if (typeof config.locale === "string") {
+        try {
+          config.locale = JSON.parse(config.locale.replace(/'/g, '"'));
+        } catch (e) {
+          console.warn("Invalid JSON format in data-locale:", e);
+        }
+      }
+
+      $(picker).daterangepicker(config);
+
+      $(picker).on("apply.daterangepicker", function (ev, picker) {
+        $(this).val(picker.startDate.format(config.locale.format));
+      });
+
+      $(picker).on("cancel.daterangepicker", function (ev, picker) {
+        $(this).val("");
+      });
+    });
+
+    // === Initialize Quill Editor ===
+    let quill;
+    if (document.querySelector("#quill-notes")) {
+      quill = new Quill("#quill-notes", {
+        theme: "snow",
+        modules: {
+          toolbar: [
+            [{ header: [1, 2, 3, false] }],
+            ["bold", "italic", "underline"],
+            ["link", "blockquote"],
+            [{ list: "ordered" }, { list: "bullet" }],
+            ["clean"],
+          ],
+        },
+      });
+
+      // Link Quill to the hidden input
+      var form = document.querySelector("#createMachineForm");
+      var hiddenInput = document.querySelector("#notes");
+      quill.on("text-change", function () {
+        hiddenInput.value = quill.root.innerHTML;
+        // Manually trigger validation feedback if needed
+        if (quill.getLength() > 1) {
+          hiddenInput.required = false; // or set value to trigger validation
+        }
+      });
+    }
+
+    // === Conditional Logic for Maintenance Trigger ===
+    const triggerSelect = document.querySelector("#maintenance_trigger");
+    const timeFields = document.getElementById("time_based_fields");
+    const usageFields = document.getElementById("usage_based_fields");
+
+    // Check if triggerSelect is a Choices.js instance
+    if (triggerSelect && choiceInstances["maintenance_trigger"]) {
+      triggerSelect.addEventListener("change", (event) => {
+        // For Choices.js, the value is in event.detail.value
+        const value = event.detail ? event.detail.value : triggerSelect.value;
+        updateMaintenanceFields(value);
+      });
+    } else if (triggerSelect) {
+      // Fallback for standard select
+      triggerSelect.addEventListener("change", () => {
+        updateMaintenanceFields(triggerSelect.value);
+      });
+    }
+
+    function updateMaintenanceFields(value) {
+      if (value === "time_based") {
+        timeFields.style.display = "block";
+        usageFields.style.display = "none";
+        // Set inputs as required
+        setRequired(timeFields, true);
+        setRequired(usageFields, false);
+      } else if (value === "usage_based") {
+        timeFields.style.display = "none";
+        usageFields.style.display = "block";
+        // Set inputs as required
+        setRequired(timeFields, false);
+        setRequired(usageFields, true);
+      } else {
+        timeFields.style.display = "none";
+        usageFields.style.display = "none";
+        setRequired(timeFields, false);
+        setRequired(usageFields, false);
+      }
+    }
+
+    function setRequired(container, isRequired) {
+      container.querySelectorAll("input, select").forEach((input) => {
+        if (isRequired) {
+          input.setAttribute("required", "required");
+        } else {
+          input.removeAttribute("required");
+        }
+      });
+    }
+
+    // === Bootstrap Form Validation ===
+    // (This is the standard script for validation)
+    var forms = document.querySelectorAll(".needs-validation, #createMachineForm");
+    Array.prototype.slice.call(forms).forEach(function (form) {
+      form.addEventListener(
+        "submit",
+        function (event) {
+          // Handle Quill validation
+          if (quill) {
+            const hiddenInput = document.querySelector("#notes");
+            // If quill is empty (length 1 means just a newline) and field is required
+            if (hiddenInput.hasAttribute("required") && quill.getLength() <= 1) {
+              hiddenInput.value = ""; // Set to empty to trigger :invalid
+            } else {
+              hiddenInput.value = quill.root.innerHTML;
+            }
+          }
+
+          if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+
+          form.classList.add("was-validated");
+
+          // Custom validation styling for Choices.js
+          form.querySelectorAll(".choices-js-required").forEach(function (select) {
+            var choicesInstance = choiceInstances[select.id];
+            if (choicesInstance) {
+              var parent = choicesInstance.container.element;
+              if (!select.value) {
+                parent.classList.add("is-invalid");
+              } else {
+                parent.classList.remove("is-invalid");
+                parent.classList.add("is-valid");
+              }
+            }
+          });
+        },
+        false
+      );
+    });
+  });
+</script>
+
+{% endblock extra_javascript %}

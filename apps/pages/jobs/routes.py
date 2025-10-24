@@ -11,6 +11,9 @@ from flask import session, redirect, url_for, render_template, request
 from apps.pages.authentication.routes import login_required
 from apps.pages.database import get_db
 from bson.objectid import ObjectId
+from werkzeug.utils import secure_filename
+from gridfs import GridFS
+from io import BytesIO
 
 blueprint = Blueprint("jobs", __name__, url_prefix="/jobs")
 
@@ -148,7 +151,9 @@ def job_details(job_id):
         "pages/jobs/job-details.html", job=job, divisions_dict=divisions_dict
     )
 
+
 from bson import json_util
+
 
 def build_comment_tree(comments):
     """
@@ -156,25 +161,26 @@ def build_comment_tree(comments):
     """
     comment_map = {}
     tree = []
-    
+
     # Create a map of all comments by their ID
     for comment in comments:
-        comment_id_str = str(comment['_id'])
+        comment_id_str = str(comment["_id"])
         comment_map[comment_id_str] = {**comment, "replies": []}
 
     # Build the tree structure
     for comment_id, comment in comment_map.items():
-        parent_id = comment.get('parent_id')
+        parent_id = comment.get("parent_id")
         parent_id_str = str(parent_id) if parent_id else None
-        
+
         if parent_id_str and parent_id_str in comment_map:
             # It's a reply, add it to its parent's replies array
-            comment_map[parent_id_str]['replies'].append(comment)
+            comment_map[parent_id_str]["replies"].append(comment)
         else:
             # It's a top-level comment
             tree.append(comment)
-            
+
     return tree
+
 
 @blueprint.route("/<string:job_id>/comments", methods=["GET"])
 def get_comments(job_id):
@@ -182,47 +188,50 @@ def get_comments(job_id):
     Fetches comments for a specific job, with pagination for top-level comments.
     """
     try:
-        db = get_db() 
-        
+        db = get_db()
+
         # 1. Get page number from query args, default to 1
-        page = request.args.get('page', 1, type=int)
+        page = request.args.get("page", 1, type=int)
         limit = 5  # Show 5 top-level comments per page
         skip = (page - 1) * limit
-        
+
         # 2. Fetch *all* comments for this job (we need them all to build the tree)
-        all_comments_cursor = db.comments.find({
-            "document_id": ObjectId(job_id),
-            "context": "job"
-        }).sort("timestamp", 1) # Sort oldest to newest to build tree correctly
-        
+        all_comments_cursor = db.comments.find(
+            {"document_id": ObjectId(job_id), "context": "job"}
+        ).sort(
+            "timestamp", 1
+        )  # Sort oldest to newest to build tree correctly
+
         all_comments = list(all_comments_cursor)
-        
+
         # 3. Build the *full* nested tree
         comment_tree = build_comment_tree(all_comments)
-        
+
         # 4. Sort the *top-level* comments (newest first)
-        comment_tree.sort(key=lambda x: x['timestamp'], reverse=True)
-        
+        comment_tree.sort(key=lambda x: x["timestamp"], reverse=True)
+
         # 5. Get pagination info
         total_top_level_comments = len(comment_tree)
         total_pages = math.ceil(total_top_level_comments / limit)
         has_more = page < total_pages
-        
+
         # 6. Get the *slice* for the current page
         paginated_tree_slice = comment_tree[skip : skip + limit]
-        
+
         # 7. Prepare the response
         response_data = {
-            "comments": paginated_tree_slice, # This list contains nested replies
+            "comments": paginated_tree_slice,  # This list contains nested replies
             "pagination": {
                 "page": page,
                 "limit": limit,
                 "total_pages": total_pages,
-                "total_comments": len(all_comments), # Total of all comments (incl. replies)
-                "has_more": has_more
-            }
+                "total_comments": len(
+                    all_comments
+                ),  # Total of all comments (incl. replies)
+                "has_more": has_more,
+            },
         }
-        
+
         return Response(
             json_util.dumps(response_data), 200, {"Content-Type": "application/json"}
         )
@@ -230,6 +239,7 @@ def get_comments(job_id):
     except Exception as e:
         print(f"Error in get_comments: {e}")
         return jsonify({"error": str(e)}), 500
+
 
 @blueprint.route("/<string:job_id>/comments", methods=["POST"])
 @login_required  # Protect this route
@@ -248,7 +258,9 @@ def post_comment(job_id):
             return jsonify({"error": "Comment text is required"}), 400
 
         # --- FIX: Use the avatar_url from the session ---
-        user_avatar = session.get("avatar_url", "{{config.ASSETS_ROOT}}/images/users/user-placeholder.jpg")
+        user_avatar = session.get(
+            "avatar_url", "{{config.ASSETS_ROOT}}/images/users/user-placeholder.jpg"
+        )
         # --- END FIX ---
 
         new_comment = {
@@ -256,7 +268,7 @@ def post_comment(job_id):
             "context": "job",
             "user_id": ObjectId(session["user_id"]),
             "username": session["user_name"],
-            "avatar_url": user_avatar, # Use the dynamic variable here
+            "avatar_url": user_avatar,  # Use the dynamic variable here
             "text": text,
             "timestamp": datetime.datetime.now(),
             "parent_id": ObjectId(parent_id) if parent_id else None,
@@ -274,7 +286,8 @@ def post_comment(job_id):
     except Exception as e:
         print(f"Error in post_comment: {e}")
         return jsonify({"error": str(e)}), 500
-    
+
+
 @blueprint.route("/<string:job_id>/team", methods=["GET"])
 def get_job_team(job_id):
     """
@@ -292,7 +305,7 @@ def get_job_team(job_id):
 
         coordinator_ids_str = job.get("coordinators", [])
         if not coordinator_ids_str:
-            return jsonify([]) # Return empty list if no coordinators
+            return jsonify([])  # Return empty list if no coordinators
 
         # Convert string IDs back to ObjectIds for querying
         coordinator_object_ids = [ObjectId(uid) for uid in coordinator_ids_str]
@@ -301,7 +314,12 @@ def get_job_team(job_id):
         # Select only necessary fields: _id, name, avatar_url, and maybe role/title
         team_members_cursor = users_collection.find(
             {"_id": {"$in": coordinator_object_ids}},
-            {"_id": 1, "name": 1, "avatar_url": 1, "role": 1} # Assuming users have a 'role' field
+            {
+                "_id": 1,
+                "name": 1,
+                "avatar_url": 1,
+                "role": 1,
+            },  # Assuming users have a 'role' field
         )
 
         team_members = list(team_members_cursor)
@@ -313,4 +331,179 @@ def get_job_team(job_id):
 
     except Exception as e:
         print(f"Error in get_job_team: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@blueprint.route("/<string:job_id>/files", methods=["POST"])
+@login_required
+def upload_job_file(job_id):
+    """Handles file uploads for a specific job using GridFS."""
+    db = get_db()
+    # --- Initialize GridFS ---
+    fs = GridFS(db)
+    files_metadata_collection = db["job_files_metadata"]  # Collection for metadata
+    jobs_collection = db["jobs"]
+
+    # Check if the job exists
+    job = jobs_collection.find_one({"_id": ObjectId(job_id)})
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+
+    if "file" not in request.files:
+        return jsonify({"error": "No file part in the request"}), 400
+
+    file = request.files["file"]
+
+    if file.filename == "":
+        return jsonify({"error": "No selected file"}), 400
+
+    if file:
+        original_filename = secure_filename(file.filename)
+        content_type = file.content_type
+
+        try:
+            # --- Save file to GridFS ---
+            # fs.put() stores the file and returns its _id
+            gridfs_file_id = fs.put(
+                file,  # The file stream
+                filename=original_filename,  # Store original name in GridFS too
+                content_type=content_type,
+                job_id=ObjectId(job_id),  # Add custom metadata
+                uploader_user_id=ObjectId(session["user_id"]),
+            )
+
+            # --- Retrieve GridFS file info to get size ---
+            gridfs_file_info = fs.get(gridfs_file_id)
+
+            # --- Save METADATA to a separate collection ---
+            file_metadata = {
+                "job_id": ObjectId(job_id),
+                "operation_id": None,
+                "gridfs_id": gridfs_file_id,  # Link to the file in GridFS
+                "original_filename": original_filename,
+                "content_type": content_type,
+                "size": gridfs_file_info.length,  # Get size from GridFS file info
+                "upload_timestamp": gridfs_file_info.upload_date,  # Use GridFS timestamp
+                "uploader_user_id": ObjectId(session["user_id"]),
+                "uploader_username": session["user_name"],
+            }
+
+            result = files_metadata_collection.insert_one(file_metadata)
+            inserted_metadata = files_metadata_collection.find_one(
+                {"_id": result.inserted_id}
+            )
+
+            return Response(
+                json_util.dumps(inserted_metadata),
+                201,
+                {"Content-Type": "application/json"},
+            )
+
+        except Exception as e:
+            print(f"Error uploading file to GridFS: {e}")
+            # GridFS errors might not leave partial files, but good to log
+            return jsonify({"error": f"Could not save file to GridFS: {e}"}), 500
+
+    return jsonify({"error": "Unknown error occurred"}), 500
+
+
+@blueprint.route("/<string:job_id>/files", methods=["GET"])
+@login_required
+def get_job_files(job_id):
+    """Lists file metadata associated with a job."""
+    try:
+        db = get_db()
+        # --- Query the metadata collection ---
+        files_metadata_collection = db["job_files_metadata"]
+
+        job_files_cursor = files_metadata_collection.find(
+            {"job_id": ObjectId(job_id)}
+        ).sort(
+            "upload_timestamp", -1
+        )  # Show newest first
+
+        job_files_metadata = list(job_files_cursor)
+
+        return Response(
+            json_util.dumps(job_files_metadata),
+            200,
+            {"Content-Type": "application/json"},
+        )
+    except Exception as e:
+        print(f"Error getting job file metadata: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@blueprint.route("/files/<string:metadata_id>/download", methods=["GET"])
+@login_required
+def download_job_file(metadata_id):
+    """Allows downloading a specific file from GridFS."""
+    try:
+        db = get_db()
+        fs = GridFS(db)
+        files_metadata_collection = db["job_files_metadata"]
+
+        # --- Find the METADATA document first ---
+        file_metadata = files_metadata_collection.find_one(
+            {"_id": ObjectId(metadata_id)}
+        )
+
+        if not file_metadata:
+            return jsonify({"error": "File metadata not found"}), 404
+
+        gridfs_id = file_metadata.get("gridfs_id")
+        if not gridfs_id:
+            return jsonify({"error": "GridFS ID missing in metadata"}), 500
+
+        # --- Get the file from GridFS using the ID from metadata ---
+        gridfs_file = fs.get(gridfs_id)
+
+        # --- Create a Flask Response to stream the file ---
+        response = Response(gridfs_file, mimetype=gridfs_file.content_type)
+        # Set headers for download
+        response.headers["Content-Length"] = gridfs_file.length
+        response.headers["Content-Disposition"] = (
+            f'attachment; filename="{gridfs_file.filename}"'  # Use filename stored in GridFS
+        )
+
+        return response
+
+    except Exception as e:
+        print(f"Error downloading file from GridFS: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# Optional: Add DELETE route - needs to delete from GridFS and metadata collection
+@blueprint.route("/files/<string:metadata_id>", methods=["DELETE"])
+@login_required
+def delete_job_file(metadata_id):
+    """Deletes a file from GridFS and its associated metadata."""
+    db = get_db()
+    fs = GridFS(db)
+    files_metadata_collection = db["job_files_metadata"]
+
+    try:
+        # --- Find and delete the METADATA document first ---
+        metadata = files_metadata_collection.find_one_and_delete(
+            {"_id": ObjectId(metadata_id)}
+        )
+
+        if not metadata:
+            return jsonify({"error": "File metadata not found"}), 404
+
+        gridfs_id = metadata.get("gridfs_id")
+
+        if gridfs_id:
+            try:
+                # --- Delete the file from GridFS ---
+                fs.delete(gridfs_id)
+                print(f"Successfully deleted GridFS file: {gridfs_id}")
+            except Exception as gridfs_error:
+                print(
+                    f"Warning: Metadata {metadata_id} deleted, but failed to delete GridFS file {gridfs_id}: {gridfs_error}"
+                )
+        return jsonify({"message": "File deleted successfully"}), 200  # OK
+
+    except Exception as e:
+        print(f"Error deleting file metadata: {e}")
         return jsonify({"error": str(e)}), 500

@@ -1,0 +1,326 @@
+{% extends 'layouts/vertical.html' %} {% block title %}Machine Details{% endblock title %} {% block extra_css %}
+<style>
+  .status-select-badge {
+    border: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.5;
+    padding: 0.3em 1.75em 0.3em 0.75em;
+    background-color: transparent !important;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.5em center;
+    background-size: 1em;
+  }
+  .status-select-badge.badge-soft-success {
+    color: #0acf97;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%230acf97' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  }
+  .status-select-badge.badge-soft-secondary {
+    color: #6c757d;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%236c757d' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  }
+  .status-select-badge.badge-soft-info {
+    color: #39afd1;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2339afd1' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  }
+  .status-select-badge.badge-soft-danger {
+    color: #f1556c;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23f1556c' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  }
+  .status-select-badge:hover,
+  .status-select-badge:focus {
+    background-color: #f1f5f9 !important;
+    box-shadow: none;
+    outline: none;
+  }
+</style>
+{% endblock extra_css %} {% block page_content %}
+<div class="container-fluid">
+  {% set title='Machine Details' %} {% set subtitle='Machines' %} {% include 'partials/page-title.html' %}
+
+  <div class="row justify-content-center">
+    <div class="col-xxl-10">
+      <div class="row g-0">
+        <div class="col-xl-9">
+          <div class="card card-h-100 rounded-0 rounded-start">
+            <div class="card-header align-items-start p-4">
+              <div class="avatar-xxl me-3">
+                <span class="avatar-title text-bg-light rounded">
+                  <i class="ti ti-settings text-secondary fs-2x"></i>
+                </span>
+              </div>
+              <div>
+                <h3 class="mb-1 d-flex fs-xl align-items-center">{{ machine.machine_name }}</h3>
+                <p class="text-muted mb-2 fs-xxs">ASSET ID: {{ machine.asset_id }}</p>
+
+                <select
+                  class="form-select-sm status-select-badge machine-status-select {% if machine.current_status == 'operating' %}badge-soft-success {% elif machine.current_status == 'idle' %}badge-soft-secondary {% elif machine.current_status == 'under_maintenance' %}badge-soft-info {% else %}badge-soft-danger {% endif %}"
+                  data-machine-id="{{ machine._id }}"
+                  data-current-status="{{ machine.current_status }}"
+                >
+                  {% for status in status_list %} {% if machine.current_status == status.value %}
+                  <option value="{{ status.value }}" selected>{{ status.name }}</option>
+                  {% else %}
+                  <option value="{{ status.value }}">{{ status.name }}</option>
+                  {% endif %} {% endfor %}
+                </select>
+              </div>
+              <div class="ms-auto">
+                <a href="javascript: void(0);" class="btn btn-light">
+                  <i class="ti ti-pencil me-1"></i>
+                  Edit
+                </a>
+              </div>
+            </div>
+            <div class="card-body px-4">
+              <div class="row mb-4">
+                <div class="col-md-4 col-xl-3">
+                  <h6 class="mb-1 text-muted text-uppercase">Registered On:</h6>
+                  <p class="fw-medium mb-0">{{ machine.created_at.strftime('%d %b, %Y') }}</p>
+                </div>
+                <div class="col-md-4 col-xl-3">
+                  <h6 class="mb-1 text-muted text-uppercase">Installation Date:</h6>
+                  <p class="fw-medium mb-0">
+                    {{ machine.installation_date.strftime('%d %b, %Y') if machine.installation_date else 'N/A' }}
+                  </p>
+                </div>
+                <div class="col-md-4 col-xl-3">
+                  <h6 class="mb-1 text-muted text-uppercase">Manufacturer:</h6>
+                  <p class="fw-medium mb-0">{{ machine.manufacturer | default('N/A') }}</p>
+                </div>
+                <div class="col-md-4 col-xl-3">
+                  <h6 class="mb-1 text-muted text-uppercase">Model Number:</h6>
+                  <p class="fw-medium mb-0">{{ machine.model_number | default('N/A') }}</p>
+                </div>
+              </div>
+
+              <ul class="nav nav-tabs nav-bordered mb-3" role="tablist">
+                <li class="nav-item">
+                  <a class="nav-link active" data-bs-toggle="tab" href="#operation-history" role="tab">
+                    <i class="ti ti-history fs-lg me-md-1 align-middle"></i>
+                    <span class="d-none d-md-inline-block align-middle">Operation History</span>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" data-bs-toggle="tab" href="#files" role="tab">
+                    <i class="ti ti-file-text fs-lg me-md-1 align-middle"></i>
+                    <span class="d-none d-md-inline-block align-middle">Files & Attachments</span>
+                  </a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" data-bs-toggle="tab" href="#notes" role="tab">
+                    <i class="ti ti-notebook fs-lg me-md-1 align-middle"></i>
+                    <span class="d-none d-md-inline-block align-middle">Notes</span>
+                  </a>
+                </li>
+              </ul>
+              <div class="tab-content">
+                <div class="tab-pane fade active show" id="operation-history" role="tabpanel">
+                  <h4 class="mb-3 fs-md">Past Operations</h4>
+                  <div class="table-responsive">
+                    <table class="table table-custom table-centered table-hover w-100 mb-0">
+                      <thead class="bg-light align-middle bg-opacity-25 thead-sm">
+                        <tr class="text-uppercase fs-xxs">
+                          <th>Operation ID</th>
+                          <th>Job Name</th>
+                          <th>Start Date</th>
+                          <th>End Date</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for operation in operations_list %}
+                        <tr>
+                          <td>{{ operation.operation_id }}</td>
+                          <td>{{ operation.job_name }}</td>
+                          <td>{{ operation.start_date.strftime('%d %b, %Y') }}</td>
+                          <td>{{ operation.end_date.strftime('%d %b, %Y') }}</td>
+                          <td><span class="badge badge-soft-success fs-xxs">{{ operation.status }}</span></td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                          <td colspan="5" class="text-center text-muted py-4">
+                            No operation history found for this machine.
+                          </td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div class="tab-pane fade" id="files" role="tabpanel">
+                  <h4 class="mb-3 fs-md">Attached Files</h4>
+                  {% for file in files_list %}
+                  <div class="d-flex justify-content-between align-items-center pb-2 border-bottom border-dashed mb-2">
+                    <div class="d-flex align-items-center py-1 gap-2">
+                      <div class="flex-shrink-0 avatar-md bg-light bg-opacity-50 text-muted rounded-2">
+                        {% if 'pdf' in file.content_type %}
+                        <i class="ti ti-file-type-pdf fs-xl avatar-title"></i>
+                        {% elif 'image' in file.content_type %}
+                        <i class="ti ti-file-type-png fs-xl avatar-title"></i>
+                        {% elif 'zip' in file.content_type or 'archive' in file.content_type %}
+                        <i class="ti ti-file-zip fs-xl avatar-title"></i>
+                        {% else %}
+                        <i class="ti ti-file-text fs-xl avatar-title"></i>
+                        {% endif %}
+                      </div>
+                      <div class="flex-grow-1">
+                        <h5 class="mb-1 fs-base"><a href="#!" class="link-reset">{{ file.original_filename }}</a></h5>
+                        <p class="text-muted mb-0 fs-xs">{{ "%.2f" | format(file.size / 1024 / 1024) }} MB</p>
+                      </div>
+                    </div>
+                    <div>
+                      <a
+                        href="{{ url_for('machines.download_machine_file', metadata_id=file._id) }}"
+                        class="btn btn-sm btn-icon btn-default"
+                        title="Download"
+                      >
+                        <i class="ti ti-download fs-lg"></i>
+                      </a>
+                    </div>
+                  </div>
+                  {% else %}
+                  <div class="text-center text-muted py-4">No files have been attached to this machine.</div>
+                  {% endfor %}
+                </div>
+
+                <div class="tab-pane fade" id="notes" role="tabpanel">
+                  <h4 class="mb-3 fs-md">Notes</h4>
+                  {% if machine.notes %}
+                  <div class="p-3 bg-light rounded-2">{{ machine.notes | safe }}</div>
+                  {% else %}
+                  <div class="text-center text-muted py-4">No notes have been added for this machine.</div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-xl-3">
+          <div class="card card-h-100 rounded-0 rounded-end">
+            <div class="card-body p-0">
+              <div class="p-3 border-bottom border-dashed">
+                <h5 class="mb-3">Maintenance Schedule</h5>
+
+                {% set schedule = machine.maintenance_schedule %} {% if schedule.trigger == 'time_based' %}
+                <div class="mb-3">
+                  <h6 class="mb-1 text-muted text-uppercase">Schedule Type:</h6>
+                  <p class="fw-medium mb-0">Time-Based (Calendar)</p>
+                </div>
+                <div class="mb-3">
+                  <h6 class="mb-1 text-muted text-uppercase">Frequency:</h6>
+                  <p class="fw-medium mb-0">Every {{ schedule.time_gap }} {{ schedule.time_gap_unit }}</p>
+                </div>
+                <div class="mb-0">
+                  <h6 class="mb-1 text-muted text-uppercase">Next PM Date:</h6>
+                  <p class="fw-medium mb-0">
+                    {{ schedule.next_maintenance_date.strftime('%d %b, %Y') if schedule.next_maintenance_date else 'Not
+                    Set' }}
+                  </p>
+                </div>
+
+                {% elif schedule.trigger == 'usage_based' %}
+                <div class="mb-3">
+                  <h6 class="mb-1 text-muted text-uppercase">Schedule Type:</h6>
+                  <p class="fw-medium mb-0">Usage-Based (Meter)</p>
+                </div>
+                <div class="mb-3">
+                  <h6 class="mb-1 text-muted text-uppercase">Frequency:</h6>
+                  <p class="fw-medium mb-0">Every {{ schedule.usage_gap }} {{ schedule.meter_unit }}</p>
+                </div>
+                <div class="mb-3">
+                  <h6 class="mb-1 text-muted text-uppercase">Current Reading:</h6>
+                  <p class="fw-medium mb-0">
+                    {{ schedule.current_meter_reading | default(0) }} {{ schedule.meter_unit }}
+                  </p>
+                  _
+                </div>
+                <div class="mb-0">
+                  <h6 class="mb-1 text-muted text-uppercase">Next PM Reading:</h6>
+                  {% set next_due = ( (schedule.current_meter_reading | default(0)) // schedule.usage_gap + 1) *
+                  schedule.usage_gap %}
+                  <p class="fw-medium mb-0">~ {{ next_due | int }} {{ schedule.meter_unit }}</p>
+                </div>
+
+                {% else %}
+                <p class="text-muted">No maintenance schedule has been set for this machine.</p>
+                {% endif %}
+              </div>
+
+              <div class="p-3">
+                <h5 class="mb-3">Upcoming Maintenance</h5>
+                <ul class="list-group list-group-flush">
+                  {% for item in upcoming_maintenance %}
+                  <li class="list-group-item d-flex align-items-center ps-0">
+                    <i class="ti ti-calendar-event me-2 text-primary fs-lg"></i>
+                    <span class="fw-medium">{{ item }}</span>
+                  </li>
+                  {% else %}
+                  <li class="list-group-item ps-0 text-muted">No upcoming schedule found.</li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock page_content %} {% block extra_javascript %}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    function updateBadgeStyle(selectElement, newStatus) {
+      selectElement.classList.remove(
+        "badge-soft-success",
+        "badge-soft-secondary",
+        "badge-soft-info",
+        "badge-soft-danger"
+      );
+      if (newStatus === "operating") selectElement.classList.add("badge-soft-success");
+      else if (newStatus === "idle") selectElement.classList.add("badge-soft-secondary");
+      else if (newStatus === "under_maintenance") selectElement.classList.add("badge-soft-info");
+      else if (newStatus === "out_of_service") selectElement.classList.add("badge-soft-danger");
+    }
+
+    const selectElement = document.querySelector(".machine-status-select");
+    if (!selectElement) return; // Guard if element doesn't exist
+
+    selectElement.addEventListener("change", function (event) {
+      const newStatus = event.target.value;
+      const machineId = event.target.dataset.machineId;
+      const oldStatus = event.target.dataset.currentStatus;
+
+      fetch("/machines/update-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          machine_id: machineId,
+          new_status: newStatus,
+        }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          if (data.success) {
+            event.target.dataset.currentStatus = newStatus;
+            updateBadgeStyle(event.target, newStatus);
+            // You could add a toast notification here
+          } else {
+            alert("Error: Could not update status. " + data.error);
+            event.target.value = oldStatus;
+          }
+        })
+        .catch((error) => {
+          console.error("Fetch Error:", error);
+          alert("Error: A network error occurred.");
+          event.target.value = oldStatus;
+        });
+    });
+  });
+</script>
+{% endblock extra_javascript %}
