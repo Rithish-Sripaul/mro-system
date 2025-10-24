@@ -135,13 +135,18 @@ class Table {
         const cell = row.children[headerIndex];
         if (!cell) return true;
 
-        if (column === "division") {
-          // Check our custom data attribute instead of the visible text
-          const divisionsData = cell.dataset.divisions || "";
-          // Our data looks like "|Sales||Engineering|". A search for "|Sales|" will be an exact match.
-          return divisionsData.includes(`|${selectedValue}|`);
+        // 1. Check for a specific data-value attribute (for status, criticality, etc.)
+        if (cell.dataset.value) {
+          return cell.dataset.value.toLowerCase() === selectedValue.toLowerCase();
         }
 
+        // 2. Check for our custom data-tags attribute
+        if (cell.dataset.tags) {
+          // Our data looks like "|Tag1||Tag2|". A search for "|Tag1|" will be an exact match.
+          return cell.dataset.tags.includes(`|${selectedValue}|`);
+        }
+
+        // 3. Fallback to text content for simple columns
         return cell.textContent.trim().toLowerCase() === selectedValue.toLowerCase();
       });
     };
@@ -457,10 +462,21 @@ class Table {
         const columnIndex = Array.from(header.parentElement.children).indexOf(header);
         if (columnIndex === -1) return;
 
-        const sortKey = header.getAttribute(this.parentInstance.sortAttribute);
+        const sortColumnIdentifier = header.dataset.column || header.getAttribute(this.parentInstance.sortAttribute);
         const currentDirection = header.dataset.direction;
         const newDirection = currentDirection === "asc" ? "desc" : "asc";
         header.dataset.direction = newDirection;
+
+        // Reset other headers' icons and directions
+        this.headers.forEach((h) => {
+          if (h !== header) {
+            const otherIcon = h.querySelector("i");
+            if (otherIcon) {
+              otherIcon.className = "ti ti-arrows-sort fs-xs ms-1";
+              h.dataset.direction = ""; // Reset direction for other headers
+            }
+          }
+        });
 
         if (newDirection === "asc") {
           icon.className = "ti ti-arrow-up fs-xs ms-1";
@@ -468,17 +484,43 @@ class Table {
           icon.className = "ti ti-arrow-down fs-xs ms-1";
         }
 
-        function getSortValue(row, columnIndex, sortKey) {
+        const getSortValue = (row, columnIndex, sortColumnIdentifier) => {
           const cell = row.children[columnIndex];
           if (!cell) return "";
 
           let raw = "";
 
-          if (sortKey) {
-            const target = cell.querySelector(`[data-sort="${sortKey}"]`);
-            raw = target ? target.textContent.trim() : "";
+          if (sortColumnIdentifier === "criticality") {
+            const criticalityValue = cell.dataset.value;
+            switch (criticalityValue) {
+              case "high":
+                return 3;
+              case "medium":
+                return 2;
+              case "low":
+                return 1;
+              default:
+                return 0; // Fallback for unknown criticality
+            }
+          } else if (sortColumnIdentifier === "status") {
+            const statusValue = cell.dataset.value;
+            switch (statusValue) {
+              case "operating":
+                return 4;
+              case "idle":
+                return 3;
+              case "under_maintenance":
+                return 2;
+              case "out_of_service":
+                return 1;
+              default:
+                return 0; // Fallback for unknown status
+            }
+          } else if (sortColumnIdentifier) {
+            const target = row.querySelector(`[data-sort="${sortColumnIdentifier}"]`);
+            raw = target ? target.textContent.trim() : cell.textContent.trim();
           } else {
-            // Extract only main text (e.g., excluding <small>, <span>, etc.)
+            // Fallback: Extract only main text (e.g., excluding <small>, <span>, etc.)
             const primaryTextNode = Array.from(cell.childNodes).find(
               (node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim()
             );
@@ -488,7 +530,7 @@ class Table {
           raw = raw.replace(/\s+/g, " "); // Normalize spaces
 
           const parenMatch = raw.match(/^\(([\d,.\s]+)\)$/);
-          if (parenMatch) {
+          if (parenMatch && sortColumnIdentifier !== "created_at") {
             const val = parseFloat(parenMatch[1].replace(/,/g, ""));
             return isNaN(val) ? raw.toLowerCase() : -val;
           }
@@ -525,19 +567,19 @@ class Table {
           }
 
           // Date
-          const parsedDate = new Date(raw);
-          if (!isNaN(parsedDate.getTime())) {
-            return parsedDate.getTime();
-          }
-
-          // Fallback string
+          if (sortColumnIdentifier === "created_at") {
+            const parsedDate = new Date(raw);
+            if (!isNaN(parsedDate.getTime())) {
+              return parsedDate.getTime();
+            }
+          } // Fallback string
           return raw.toLowerCase();
-        }
+        };
 
         // Sort rows
         this.filteredRows.sort((a, b) => {
-          const aVal = getSortValue(a, columnIndex, sortKey);
-          const bVal = getSortValue(b, columnIndex, sortKey);
+          const aVal = getSortValue(a, columnIndex, sortColumnIdentifier);
+          const bVal = getSortValue(b, columnIndex, sortColumnIdentifier);
 
           if (typeof aVal === "number" && typeof bVal === "number") {
             return newDirection === "asc" ? aVal - bVal : bVal - aVal;

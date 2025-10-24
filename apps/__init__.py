@@ -51,7 +51,9 @@ def create_app(config):
     register_blueprints(app)
 
     from apps.commands import seed_jobs_command
+    from apps.commands import seed_machines_command
 
     app.cli.add_command(seed_jobs_command)
+    app.cli.add_command(seed_machines_command)
 
     return app

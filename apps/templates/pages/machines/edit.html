@@ -1,0 +1,663 @@
+{% extends 'layouts/vertical.html' %} {% block title %}Edit Machine{% endblock title %} {% block extra_css %}
+<link rel="stylesheet" href="{{ config.ASSETS_ROOT }}/plugins/daterangepicker/daterangepicker.css" type="text/css" />
+<link rel="stylesheet" href="{{ config.ASSETS_ROOT }}/plugins/choices/choices.min.css" />
+<link href="{{ config.ASSETS_ROOT }}/plugins/quill/quill.core.css" rel="stylesheet" type="text/css" />
+<link href="{{ config.ASSETS_ROOT }}/plugins/quill/quill.snow.css" rel="stylesheet" type="text/css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@yaireo/tagify@4.35.1/dist/tagify.min.css" />
+
+<style>
+  .tall-input {
+    height: 46px !important;
+  }
+  .choices.is-invalid .choices__inner {
+    border-color: #f1556c;
+  }
+  tagify.is-invalid + .tagify {
+    border-color: #f1556c;
+  }
+  .choices.choices.is-invalid {
+    margin-bottom: 0px !important;
+  }
+  .choices.is-valid .choices__inner {
+    border-color: #0acf97;
+  }
+  .choices {
+    margin-bottom: 0px !important;
+  }
+  .was-validated #quill-notes:has(+ #notes:invalid) .ql-container {
+    border-color: #f1556c !important;
+  }
+</style>
+{% endblock extra_css %} {% block page_content %}
+<div class="container-fluid">
+  {% set title='Edit Machine' %} {% set subtitle='Machines' %} {% include 'partials/page-title.html' %}
+
+  <div class="row justify-content-start">
+    <div class="col-xxl-8">
+      <div class="card">
+        <div class="card-header"><h4 class="card-title">Edit Machine: {{ machine.machine_name }}</h4></div>
+        <div class="card-body">
+          <div class="tab-content">
+            <form id="editMachineForm" method="POST" enctype="multipart/form-data" novalidate>
+              <div class="tab-pane fade show active" id="machineInfo">
+                {# Core Identification Section #}
+                <h5 class="fw-semibold mb-3">Core Identification</h5>
+                <div class="row">
+                  <div class="col-xl-6">
+                    <div class="mb-3">
+                      <label class="form-label">Machine Name</label>
+                      <input
+                        type="text"
+                        class="form-control tall-input"
+                        name="machine_name"
+                        value="{{ machine.machine_name }}"
+                        required
+                      />
+                      <div class="invalid-feedback">Please provide a Machine Name.</div>
+                    </div>
+                  </div>
+                  <div class="col-xl-6">
+                    <div class="mb-3">
+                      <label class="form-label">Asset ID / Serial Number</label>
+                      <input
+                        type="text"
+                        class="form-control tall-input"
+                        name="asset_id"
+                        value="{{ machine.asset_id }}"
+                        required
+                      />
+                      <div class="invalid-feedback">Please provide a unique Asset ID or Serial Number.</div>
+                    </div>
+                  </div>
+                  <div class="col-xl-12">
+                    <div class="mb-3">
+                      <label for="current_status" class="form-label">Current Status</label>
+                      <select
+                        class="form-select choices-js-required"
+                        id="current_status"
+                        name="current_status"
+                        data-choices
+                        required
+                      >
+                        {% for status in status_list %} {% if machine.current_status == status.value %}
+                        <option value="{{ status.value }}" selected>{{ status.name }}</option>
+                        {% else %}
+                        <option value="{{ status.value }}">{{ status.name }}</option>
+                        {% endif %} {% endfor %}
+                      </select>
+                      <div class="invalid-feedback">Please select a status.</div>
+                    </div>
+                  </div>
+                </div>
+
+                {# Classification Section #}
+                <div class="my-3 border-top border-dashed"></div>
+                <h5 class="fw-semibold mb-3">Classification</h5>
+                <div class="row">
+                  <div class="col-xl-6">
+                    <div class="mb-3">
+                      <label for="criticality" class="form-label">Criticality</label>
+                      <select
+                        class="form-select choices-js-required"
+                        id="criticality"
+                        name="criticality"
+                        data-choices
+                        required
+                      >
+                        {% for criticality_option in criticality_list %} {% if machine.criticality ==
+                        criticality_option.value %}
+                        <option value="{{ criticality_option.value }}" selected>{{ criticality_option.name }}</option>
+                        {% else %}
+                        <option value="{{ criticality_option.value }}">{{ criticality_option.name }}</option>
+                        {% endif %} {% endfor %}
+                      </select>
+                      <div class="invalid-feedback">Please set a criticality level.</div>
+                    </div>
+                  </div>
+                  <div class="col-xl-12">
+                    <div class="mb-3">
+                      <label class="form-label">Tags</label>
+                      <div>
+                        {# Use join(',') for Tagify default parsing #}
+                        <input
+                          id="machineTagify"
+                          class="form-control mb-2"
+                          name="tags"
+                          placeholder="Type tags and press enter"
+                          value="{{ machine.tags | join(',') }}"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {# Manufacturer Details Section #}
+                <div class="my-3 border-top border-dashed"></div>
+                <h5 class="fw-semibold mb-3">Manufacturer Details</h5>
+                <div class="row">
+                  <div class="col-xl-6">
+                    <div class="mb-3">
+                      <label class="form-label">Manufacturer</label>
+                      <input
+                        type="text"
+                        class="form-control tall-input"
+                        name="manufacturer"
+                        value="{{ machine.manufacturer | default('') }}"
+                      />
+                    </div>
+                  </div>
+                  <div class="col-xl-6">
+                    <div class="mb-3">
+                      <label class="form-label">Model Number</label>
+                      <input
+                        type="text"
+                        class="form-control tall-input"
+                        name="model_number"
+                        value="{{ machine.model_number | default('') }}"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {# Lifecycle Section #}
+                <div class="my-3 border-top border-dashed"></div>
+                <h5 class="fw-semibold mb-3">Lifecycle</h5>
+                <div class="row">
+                  <div class="col-xl-6">
+                    <div class="mb-3">
+                      <label class="form-label">Installation Date</label>
+                      <input
+                        type="text"
+                        class="form-control date tall-input"
+                        id="installation_date"
+                        name="installation_date"
+                        data-toggle="date-picker"
+                        data-single-date-picker="true"
+                        data-locale="{'format': 'MM/DD/YYYY'}"
+                        value="{{ machine.installation_date.strftime('%m/%d/%Y') if machine.installation_date else '' }}"
+                      />
+                    </div>
+                  </div>
+                  <div class="col-xl-6">
+                    <div class="mb-3">
+                      <label class="form-label">Warranty Expiry Date</label>
+                      <input
+                        type="text"
+                        class="form-control date tall-input"
+                        id="warranty_expiry_date"
+                        name="warranty_expiry_date"
+                        data-toggle="date-picker"
+                        data-single-date-picker="true"
+                        data-locale="{'format': 'MM/DD/YYYY'}"
+                        value="{{ machine.warranty_expiry_date.strftime('%m/%d/%Y') if machine.warranty_expiry_date else '' }}"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {# Maintenance Schedule Section #}
+                <div class="my-3 border-top border-dashed"></div>
+                <h5 class="fw-semibold mb-3">Maintenance Schedule</h5>
+                <div class="row">
+                  <div class="col-xl-12">
+                    <div class="mb-3">
+                      <label for="maintenance_trigger" class="form-label">Maintenance Trigger</label>
+                      <select
+                        class="form-select choices-js-required"
+                        id="maintenance_trigger"
+                        name="maintenance_trigger"
+                        data-choices
+                        required
+                      >
+                        {% if not machine.maintenance_schedule.trigger %}
+                        <option value="" disabled selected>Select trigger type</option>
+                        {% else %}
+                        <option value="" disabled>Select trigger type</option>
+                        {% endif %} {% if machine.maintenance_schedule.trigger == 'time_based' %}
+                        <option value="time_based" selected>Time-Based (Calendar)</option>
+                        {% else %}
+                        <option value="time_based">Time-Based (Calendar)</option>
+                        {% endif %} {% if machine.maintenance_schedule.trigger == 'usage_based' %}
+                        <option value="usage_based" selected>Usage-Based (Meter)</option>
+                        {% else %}
+                        <option value="usage_based">Usage-Based (Meter)</option>
+                        {% endif %}
+                      </select>
+                      <div class="invalid-feedback">Please select a maintenance trigger.</div>
+                    </div>
+                  </div>
+                </div>
+
+                {# TIME BASED FIELDS #}
+                <div id="time_based_fields" style="display: none">
+                  <div class="row">
+                    <div class="col-xl-6">
+                      <label class="form-label">Routine Maintenance Gap</label>
+                      <div class="input-group mb-3">
+                        <input
+                          type="number"
+                          class="form-control tall-input"
+                          name="time_gap"
+                          min="1"
+                          value="{{ machine.maintenance_schedule.time_gap | default('') }}"
+                        />
+                        <select class="form-select" name="time_gap_unit" style="max-width: 120px">
+                          {% if machine.maintenance_schedule.time_gap_unit == 'days' %}
+                          <option value="days" selected>Days</option>
+                          {% else %}
+                          <option value="days">Days</option>
+                          {% endif %} {% if machine.maintenance_schedule.time_gap_unit == 'weeks' %}
+                          <option value="weeks" selected>Weeks</option>
+                          {% else %}
+                          <option value="weeks">Weeks</option>
+                          {% endif %} {% if machine.maintenance_schedule.time_gap_unit == 'months' %}
+                          <option value="months" selected>Months</option>
+                          {% else %}
+                          <option value="months">Months</option>
+                          {% endif %}
+                        </select>
+                      </div>
+                    </div>
+                    <div class="col-xl-6">
+                      <div class="mb-3">
+                        <label class="form-label">Next Maintenance Date</label>
+                        <input
+                          type="text"
+                          class="form-control date tall-input"
+                          id="next_maintenance_date"
+                          name="next_maintenance_date"
+                          data-toggle="date-picker"
+                          data-single-date-picker="true"
+                          data-locale="{'format': 'MM/DD/YYYY'}"
+                          value="{{ machine.maintenance_schedule.next_maintenance_date.strftime('%m/%d/%Y') if machine.maintenance_schedule.next_maintenance_date else '' }}"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {# USAGE BASED FIELDS #}
+                <div id="usage_based_fields" style="display: none">
+                  <div class="row">
+                    <div class="col-xl-4">
+                      <div class="mb-3">
+                        <label class="form-label">Routine Maintenance Gap</label>
+                        <input
+                          type="number"
+                          class="form-control tall-input"
+                          name="usage_gap"
+                          min="1"
+                          value="{{ machine.maintenance_schedule.usage_gap | default('') }}"
+                        />
+                      </div>
+                    </div>
+                    <div class="col-xl-4">
+                      <div class="mb-3">
+                        <label class="form-label">Meter Unit</label>
+                        <select class="form-select" id="meter_unit" data-choices name="meter_unit">
+                          {% if not machine.maintenance_schedule.meter_unit %}
+                          <option value="" disabled selected>Select unit</option>
+                          {% else %}
+                          <option value="" disabled>Select unit</option>
+                          {% endif %} {% for unit in meter_units_list %} {% if machine.maintenance_schedule.meter_unit
+                          == unit.value %}
+                          <option value="{{ unit.value }}" selected>{{ unit.name }}</option>
+                          {% else %}
+                          <option value="{{ unit.value }}">{{ unit.name }}</option>
+                          {% endif %} {% endfor %}
+                        </select>
+                      </div>
+                    </div>
+                    <div class="col-xl-4">
+                      <div class="mb-3">
+                        <label class="form-label">Current Meter Reading</label>
+                        <input
+                          type="number"
+                          class="form-control tall-input"
+                          name="current_meter_reading"
+                          min="0"
+                          value="{{ machine.maintenance_schedule.current_meter_reading | default('') }}"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {# Notes & Attachments Section #}
+                <div class="my-3 border-top border-dashed"></div>
+                <h5 class="fw-semibold mb-3">Notes & Attachments</h5>
+                <div class="row">
+                  <div class="col-xl-12">
+                    <div class="mb-3">
+                      <label class="form-label">Notes</label>
+                      {# Initial content goes in the div, JS loads it. The hidden input is populated by JS. #}
+                      <div id="quill-notes" style="height: 250px">{{ machine.notes | default('', true) | safe }}</div>
+                      <input type="hidden" name="notes" id="notes" />
+                    </div>
+                  </div>
+
+                  <div class="col-xl-12">
+                    <div class="mb-3">
+                      <label class="form-label">Existing Attachments</label>
+                      <div id="existing-files-list">
+                        {% if files_list %} {% for file in files_list %}
+                        <div
+                          class="d-flex justify-content-between align-items-center py-1 border-bottom border-dashed mb-1"
+                          data-file-container="{{ file._id }}"
+                        >
+                          <div class="d-flex align-items-center gap-2">
+                            <div class="flex-shrink-0 avatar-xs bg-light bg-opacity-50 text-muted rounded-2">
+                              {% set lc_content_type = file.content_type | lower %} {% if 'pdf' in lc_content_type %}
+                              <i class="ti ti-file-type-pdf fs-sm avatar-title"></i>
+                              {% elif 'image' in lc_content_type %}
+                              <i class="ti ti-file-type-png fs-sm avatar-title"></i>
+                              {% elif 'zip' in lc_content_type or 'archive' in lc_content_type %}
+                              <i class="ti ti-file-zip fs-sm avatar-title"></i>
+                              {% else %}
+                              <i class="ti ti-file-text fs-sm avatar-title"></i>
+                              {% endif %}
+                            </div>
+                            <div class="flex-grow-1">
+                              <a
+                                href="{{ url_for('machines.download_machine_file', metadata_id=file._id) }}"
+                                class="link-reset fs-sm"
+                                target="_blank"
+                              >
+                                {{ file.original_filename }}
+                              </a>
+                              <p class="text-muted mb-0 fs-xxs">
+                                {{ "%.2f" | format(file.size / 1024 / 1024 if file.size else 0) }} MB
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            class="btn btn-sm btn-icon btn-danger delete-file-btn"
+                            data-file-id="{{ file._id }}"
+                            title="Delete File"
+                          >
+                            <i class="ti ti-trash"></i>
+                          </button>
+                        </div>
+                        {% endfor %} {% else %}
+                        <p class="text-muted fs-sm" id="no-files-message">No existing attachments.</p>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-xl-12">
+                    <div class="mb-3">
+                      <label for="attachments" class="form-label">Upload New Attachments</label>
+                      <input class="form-control" type="file" id="attachments" name="attachments" multiple />
+                    </div>
+                  </div>
+                </div>
+
+                {# Submit Button #}
+                <div class="d-flex justify-content-start mt-3">
+                  <button type="submit" class="btn btn-primary">Update Machine</button>
+                  <a href="{{ url_for('machines.manage_machines') }}" class="btn btn-light ms-2">Cancel</a>
+                </div>
+              </div>
+              {# End tab-pane #}
+            </form>
+          </div>
+          {# End tab-content #}
+        </div>
+        {# End card-body #}
+      </div>
+      {# End card #}
+    </div>
+    {# End col-xxl-8 #} {# Removed Sidebar #}
+  </div>
+  {# End row #}
+</div>
+{# End container-fluid #} {% endblock page_content %} {% block extra_javascript %} {# PLUGINS #}
+<script src="{{ config.ASSETS_ROOT }}/plugins/moment/moment.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/plugins/daterangepicker/daterangepicker.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/plugins/choices/choices.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify@4.35.1/dist/tagify.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/plugins/quill/quill.js"></script>
+
+{# CUSTOM JS #} {# Removed custom-table.js as it's not needed here #}
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // === Initialize Choices.js ===
+    const choicesElements = document.querySelectorAll("[data-choices]");
+    let choiceInstances = {};
+    choicesElements.forEach((el) => {
+      const instance = new Choices(el, {
+        removeItemButton: el.hasAttribute("data-choices-removeItem"),
+        searchEnabled: true,
+        shouldSort: false,
+      });
+      if (el.id) {
+        choiceInstances[el.id] = instance;
+      }
+    });
+
+    // === Initialize Tagify ===
+    const tagifyInput = document.querySelector("#machineTagify");
+    if (tagifyInput) {
+      // Tagify parses comma-separated string from 'value' attribute
+      new Tagify(tagifyInput);
+    }
+
+    // === Initialize Daterangepickers ===
+    const datePickers = document.querySelectorAll('[data-toggle="date-picker"]');
+    datePickers.forEach(function (picker) {
+      let config = {
+        singleDatePicker: true,
+        autoUpdateInput: false, // Don't auto-fill on load
+        locale: { format: "MM/DD/YYYY", cancelLabel: "Clear" },
+      };
+      // Handle time picker if specified
+      if (picker.dataset.timePicker === "true") {
+        config.timePicker = true;
+        try {
+          config.locale.format = picker.dataset.locale
+            ? JSON.parse(picker.dataset.locale.replace(/'/g, '"')).format
+            : "MM/DD/YYYY hh:mm A";
+        } catch (e) {
+          config.locale.format = "MM/DD/YYYY hh:mm A";
+        }
+      } else if (picker.dataset.locale) {
+        // Respect format even without time picker
+        try {
+          config.locale.format = JSON.parse(picker.dataset.locale.replace(/'/g, '"')).format || "MM/DD/YYYY";
+        } catch (e) {}
+      }
+
+      $(picker).daterangepicker(config);
+      $(picker).on("apply.daterangepicker", function (ev, picker) {
+        $(this).val(picker.startDate.format(config.locale.format));
+      });
+      $(picker).on("cancel.daterangepicker", function (ev, picker) {
+        $(this).val("");
+      });
+
+      // Set initial value from input's value attribute
+      if (picker.value) {
+        const initialDate = moment(picker.value, config.locale.format);
+        if (initialDate.isValid()) {
+          $(picker).data("daterangepicker").setStartDate(initialDate);
+          $(picker).data("daterangepicker").setEndDate(initialDate);
+          $(picker).val(initialDate.format(config.locale.format)); // Ensure input reflects value
+        } else {
+          $(picker).val("");
+        } // Clear if invalid
+      } else {
+        $(picker).val("");
+      } // Ensure empty if no value
+    });
+
+    // === Initialize Quill Editor ===
+    let quill;
+    const quillNotesElement = document.querySelector("#quill-notes");
+    const hiddenNotesInput = document.querySelector("#notes");
+
+    if (quillNotesElement && hiddenNotesInput) {
+      quill = new Quill(quillNotesElement, {
+        theme: "snow",
+        modules: {
+          toolbar: [
+            [{ header: [1, 2, 3, false] }],
+            ["bold", "italic", "underline"],
+            ["link", "blockquote"],
+            [{ list: "ordered" }, { list: "bullet" }],
+            ["clean"],
+          ],
+        },
+      });
+
+      // Sync Quill content to hidden input before form submission and on change.
+      hiddenNotesInput.value = quill.root.innerHTML;
+      quill.on("text-change", function () {
+        hiddenNotesInput.value = quill.root.innerHTML;
+        // Handle required validation if needed
+        if (hiddenNotesInput.hasAttribute("required")) {
+          hiddenNotesInput.required = !(quill.getLength() > 1 || quill.getText().trim() !== "");
+        }
+      });
+    }
+
+    // === Conditional Logic for Maintenance Trigger ===
+    const triggerSelect = document.querySelector("#maintenance_trigger");
+    const timeFields = document.getElementById("time_based_fields");
+    const usageFields = document.getElementById("usage_based_fields");
+
+    function updateMaintenanceFields(value) {
+      const isTime = value === "time_based";
+      const isUsage = value === "usage_based";
+      timeFields.style.display = isTime ? "block" : "none";
+      usageFields.style.display = isUsage ? "block" : "none";
+      setRequired(timeFields, isTime);
+      setRequired(usageFields, isUsage);
+    }
+
+    function setRequired(container, isRequired) {
+      container.querySelectorAll("input, select").forEach((input) => {
+        if (isRequired) {
+          input.setAttribute("required", "required");
+        } else {
+          input.removeAttribute("required");
+        }
+      });
+    }
+
+    // Attach listener via Choices instance if available
+    const triggerChoiceInstance = choiceInstances["maintenance_trigger"];
+    if (triggerChoiceInstance) {
+      triggerChoiceInstance.passedElement.element.addEventListener("change", () => {
+        updateMaintenanceFields(triggerChoiceInstance.getValue(true));
+      });
+      // Set initial state on page load based on the pre-selected value
+      updateMaintenanceFields(triggerChoiceInstance.getValue(true));
+    } else if (triggerSelect) {
+      // Fallback for plain select
+      triggerSelect.addEventListener("change", () => updateMaintenanceFields(triggerSelect.value));
+      // Set initial state on page load
+      updateMaintenanceFields(triggerSelect.value);
+    }
+
+    // === Bootstrap Form Validation ===
+    var forms = document.querySelectorAll(".needs-validation, #editMachineForm");
+    Array.prototype.slice.call(forms).forEach(function (form) {
+      form.addEventListener(
+        "submit",
+        function (event) {
+          // Final Quill update before submit
+          if (quill && hiddenNotesInput) {
+            hiddenNotesInput.value = quill.root.innerHTML;
+            if (hiddenNotesInput.hasAttribute("required")) {
+              if (quill.getLength() <= 1 && quill.getText().trim() === "") {
+                hiddenNotesInput.value = ""; // Ensure empty for validation
+              }
+            }
+          }
+
+          if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+
+          form.classList.add("was-validated");
+
+          // Custom Choices.js validation styling
+          form.querySelectorAll(".choices-js-required").forEach(function (select) {
+            var choicesInstance = choiceInstances[select.id];
+            var container = choicesInstance ? choicesInstance.containerOuter.element : select; // Target outer container or select itself
+            if ((choicesInstance && choicesInstance.getValue(true)) || (!choicesInstance && select.value)) {
+              container.classList.remove("is-invalid");
+              container.classList.add("is-valid");
+            } else {
+              container.classList.add("is-invalid");
+              container.classList.remove("is-valid");
+            }
+          });
+        },
+        false
+      );
+    });
+
+    // === File Delete Logic (Example) ===
+    const fileListContainer = document.getElementById("existing-files-list");
+    if (fileListContainer) {
+      fileListContainer.addEventListener("click", function (event) {
+        if (event.target.closest(".delete-file-btn")) {
+          const button = event.target.closest(".delete-file-btn");
+          const fileId = button.dataset.fileId;
+          const fileContainer = button.closest("[data-file-container]");
+
+          if (fileId && confirm("Are you sure you want to delete this file? This action cannot be undone.")) {
+            // Send request to backend to delete the file
+            fetch(`/machines/files/delete/${fileId}`, {
+              method: "DELETE",
+              headers: {
+                "Content-Type": "application/json",
+                // Add CSRF token header if needed
+              },
+            })
+              .then((response) => {
+                if (response.ok) {
+                  return response.json();
+                }
+                throw new Error("Network response was not ok.");
+              })
+              .then((data) => {
+                if (data.success) {
+                  // Remove the file item from the list
+                  if (fileContainer) {
+                    fileContainer.remove();
+                  }
+                  // Check if the list is now empty
+                  const remainingFiles = fileListContainer.querySelectorAll("[data-file-container]");
+                  if (remainingFiles.length === 0) {
+                    let noFilesMsg = document.getElementById("no-files-message");
+                    if (!noFilesMsg) {
+                      noFilesMsg = document.createElement("p");
+                      noFilesMsg.className = "text-muted fs-sm";
+                      noFilesMsg.id = "no-files-message";
+                      noFilesMsg.textContent = "No existing attachments.";
+                      fileListContainer.appendChild(noFilesMsg);
+                    }
+                  }
+                  // Optionally show a success toast/message
+                } else {
+                  alert("Error deleting file: " + (data.error || "Unknown error"));
+                }
+              })
+              .catch((error) => {
+                console.error("Error deleting file:", error);
+                alert("An error occurred while trying to delete the file.");
+              });
+          }
+        }
+      });
+    }
+  }); // End DOMContentLoaded
+</script>
+
+{% endblock extra_javascript %}

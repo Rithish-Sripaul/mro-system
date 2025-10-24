@@ -13,6 +13,6 @@ flask-restx==1.3.0
 python-dotenv==0.19.2
 Flask-Minify==0.42
 pymongo==4.11.3
-
+faker
 # flask_mysqldb
 # psycopg2-binary

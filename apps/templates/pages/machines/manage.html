@@ -2,13 +2,12 @@
 
 <style>
   .status-select-badge {
-    border: none;
+    border: 1px solid #dee2e6; /* Make border visible by default */
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
-
-    /* 1. Set a single, larger font size (12px) */
-    font-size: 0.75rem;
+    /* Increased font size */
+    font-size: 0.8125rem; /* fs-sm */
     font-weight: 500; /* 700 was a bit too bold */
     line-height: 1.5;
 
@@ -54,7 +53,6 @@
   /* Set background on hover/focus to show it's interactive */
   .status-select-badge:hover,
   .status-select-badge:focus {
-    background-color: #e5ebf0 !important;
     box-shadow: none;
     outline: none;
   }
@@ -172,8 +170,21 @@
           </div>
           <div class="d-flex align-items-center gap-2">
             <span class="me-2 fw-semibold">Filter By:</span>
+
+            {# MANUFACTURER - Filter #}
             <div class="app-search">
-              <select data-table-filter="division" class="form-select form-control my-1 my-md-0">
+              <select data-table-filter="manufacturer" class="form-select form-control my-1 my-md-0">
+                <option value="All">All Manufacturers</option>
+                {% for manufacturer in all_manufacturers %}
+                <option value="{{ manufacturer }}">{{ manufacturer }}</option>
+                {% endfor %}
+              </select>
+              <i data-lucide="factory" class="app-search-icon text-muted"></i>
+            </div>
+
+            {# TAGS - Filter #}
+            <div class="app-search">
+              <select data-table-filter="tags" class="form-select form-control my-1 my-md-0">
                 <option value="All">All Tags</option>
                 {% for tag in all_tags %}
                 <option value="{{ tag }}">{{ tag }}</option>
@@ -181,6 +192,19 @@
               </select>
               <i data-lucide="tag" class="app-search-icon text-muted"></i>
             </div>
+
+            {# CRITICALITY - Filter #}
+            <div class="app-search">
+              <select data-table-filter="criticality" class="form-select form-control my-1 my-md-0">
+                <option value="All">All Criticalities</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+              <i data-lucide="alert-triangle" class="app-search-icon text-muted"></i>
+            </div>
+
+            {# STATUS - Filter #}
             <div class="app-search">
               <select data-table-filter="status" class="form-select form-control my-1 my-md-0">
                 <option value="All">All Statuses</option>
@@ -217,8 +241,8 @@
                 <th data-table-sort="asset_id">Asset ID</th>
                 <th data-table-sort data-column="status">Status</th>
                 <th data-table-sort data-column="criticality">Criticality</th>
-                <th data-table-sort="manufacturer">Manufacturer</th>
-                <th data-column="division">Tags</th>
+                <th data-table-sort data-column="manufacturer">Manufacturer</th>
+                <th data-table-sort data-column="tags">Tags</th>
                 <th data-table-sort="created_at">Registered On</th>
                 <th class="text-center" style="width: 1%">Actions</th>
               </tr>
@@ -233,6 +257,7 @@
                     value="option"
                   />
                 </td>
+                {# MACHINE NAME and MANUFACTURER #}
                 <td>
                   <div class="d-flex">
                     <div class="avatar-md me-3">
@@ -242,15 +267,24 @@
                     </div>
                     <div>
                       <h5 class="mb-1">
-                        <a data-sort="machine_name" href="#" class="link-reset">{{ machine.machine_name }}</a>
+                        <a
+                          data-sort="machine_name"
+                          href="{{ url_for('machines.machine_details', machine_id=machine._id)}}"
+                          class="link-reset"
+                        >
+                          {{ machine.machine_name }}
+                        </a>
                       </h5>
                       <p class="text-muted mb-0 fs-xxs">by: {{ machine.manufacturer | default('N/A') }}</p>
                     </div>
                   </div>
                 </td>
+
+                {# ASSET ID #}
                 <td>{{ machine.asset_id }}</td>
 
-                <td data-column="status">
+                {# STATUS with DROPDOWN #}
+                <td data-column="status" data-value="{{ machine.current_status }}">
                   <select
                     class="form-select form-select-sm status-select-badge machine-status-select {% if machine.current_status == 'operating' %}badge-soft-success {% elif machine.current_status == 'idle' %}badge-soft-secondary {% elif machine.current_status == 'under_maintenance' %}badge-soft-info {% else %}badge-soft-danger {% endif %}"
                     data-machine-id="{{ machine._id }}"
@@ -263,7 +297,9 @@
                     {% endif %} {% endfor %}
                   </select>
                 </td>
-                <td data-column="criticality">
+
+                {# CRITICALITY #}
+                <td data-column="criticality" data-value="{{ machine.criticality }}">
                   {% if machine.criticality == "high" %}
                   <span class="badge badge-soft-danger fs-xxs">High</span>
                   {% elif machine.criticality == "medium" %}
@@ -272,9 +308,12 @@
                   <span class="badge badge-soft-secondary fs-xxs">Low</span>
                   {% endif %}
                 </td>
+
+                {# MANUFACTURER #}
                 <td>{{ machine.manufacturer | default('N/A') }}</td>
 
-                <td data-divisions="{% for tag in machine.tags %}|{{ tag }}|{% endfor %}">
+                {# TAGS #}
+                <td data-tags="{% for tag in machine.tags %}|{{ tag }}|{% endfor %}">
                   {% for tag in machine.tags %}
                   <span class="badge badge-soft-info me-1 fs-xxs">{{ tag }}</span>
                   {% else %}
@@ -282,10 +321,13 @@
                   {% endfor %}
                 </td>
 
+                {# REGISTERED ON #}
                 <td data-sort="created_at">
                   {{ machine.created_at.strftime('%d %b, %Y') }}
                   <small class="text-muted">{{ machine.created_at.strftime('%I:%M %p') }}</small>
                 </td>
+
+                {# STATUS #}
                 <td>
                   <div class="d-flex justify-content-center gap-1">
                     <a
@@ -294,7 +336,10 @@
                     >
                       <i class="ti ti-eye fs-lg"></i>
                     </a>
-                    <a href="#" class="btn btn-light btn-icon btn-sm rounded-circle">
+                    <a
+                      href="{{ url_for('machines.edit_machine', machine_id=machine._id) }}"
+                      class="btn btn-light btn-icon btn-sm rounded-circle"
+                    >
                       <i class="ti ti-edit fs-lg"></i>
                     </a>
                     <a href="#" data-table-delete-row class="btn btn-danger btn-icon btn-sm rounded-circle">

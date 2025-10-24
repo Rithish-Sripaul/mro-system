@@ -50,6 +50,19 @@ def manage_machines():
         {"value": "out_of_service", "name": "Out of Service"},
     ]
 
+    # 3. Get all unique manufacturers
+    all_manufacturers = machines_collection.distinct("manufacturer")
+    all_manufacturers = sorted(
+        [m for m in all_manufacturers if m]
+    )  # Filter out None/empty and sort
+
+    # 4. Define the static criticality list
+    criticality_list = [
+        {"value": "high", "name": "High"},
+        {"value": "medium", "name": "Medium"},
+        {"value": "low", "name": "Low"},
+    ]
+
     # --- Compute statistics for dashboard cards ---
     stats = {
         "total": len(machines_list),
@@ -81,6 +94,8 @@ def manage_machines():
         machines_list=machines_list,
         all_tags=all_tags,
         status_list=status_list,
+        all_manufacturers=all_manufacturers,
+        criticality_list=criticality_list,
         stats=stats,
     )
 
@@ -261,6 +276,204 @@ def create_machines():
     )
 
 
+@blueprint.route("/edit/<string:machine_id>", methods=["GET", "POST"])
+@login_required
+def edit_machine(machine_id):
+    db = get_db()
+    fs = GridFS(db)
+    machines_collection = db["machines"]
+    files_metadata_collection = db["machine_files_metadata"]
+
+    machine = machines_collection.find_one({"_id": ObjectId(machine_id)})
+    if not machine:
+        flash("Machine not found.", "danger")
+        return redirect(url_for("machines.manage_machines"))
+
+    if request.method == "POST":
+        try:
+            # === 1. GET FORM DATA ===
+            machine_name = request.form.get("machine_name")
+            asset_id = request.form.get("asset_id")
+            current_status = request.form.get("current_status")
+            criticality = request.form.get("criticality")
+            manufacturer = request.form.get("manufacturer")
+            model_number = request.form.get("model_number")
+            notes = request.form.get("notes")
+
+            # === 2. HANDLE TAGS (from Tagify JSON) ===
+            tags_json_string = request.form.get("tags")
+            tags = []
+            if tags_json_string:
+                try:
+                    tags_data = json.loads(tags_json_string)
+                    tags = [tag["value"] for tag in tags_data if "value" in tag]
+                except json.JSONDecodeError:
+                    tags = []
+
+            # === 3. HANDLE DATES ===
+            installation_date_str = request.form.get("installation_date")
+            warranty_expiry_date_str = request.form.get("warranty_expiry_date")
+
+            date_format = "%m/%d/%Y"
+
+            installation_date = None
+            if installation_date_str:
+                installation_date = datetime.datetime.strptime(
+                    installation_date_str, date_format
+                )
+
+            warranty_expiry_date = None
+            if warranty_expiry_date_str:
+                warranty_expiry_date = datetime.datetime.strptime(
+                    warranty_expiry_date_str, date_format
+                )
+
+            # === 4. HANDLE CONDITIONAL MAINTENANCE SCHEDULE ===
+            maintenance_trigger = request.form.get("maintenance_trigger")
+            maintenance_schedule = {
+                "trigger": maintenance_trigger,
+            }
+
+            if maintenance_trigger == "time_based":
+                maintenance_schedule["time_gap"] = request.form.get(
+                    "time_gap", type=int
+                )
+                maintenance_schedule["time_gap_unit"] = request.form.get(
+                    "time_gap_unit"
+                )
+                next_maintenance_date_str = request.form.get("next_maintenance_date")
+                maintenance_schedule["next_maintenance_date"] = None
+                if next_maintenance_date_str:
+                    maintenance_schedule["next_maintenance_date"] = (
+                        datetime.datetime.strptime(
+                            next_maintenance_date_str, date_format
+                        )
+                    )
+
+            elif maintenance_trigger == "usage_based":
+                maintenance_schedule["usage_gap"] = request.form.get(
+                    "usage_gap", type=int
+                )
+                maintenance_schedule["meter_unit"] = request.form.get("meter_unit")
+                maintenance_schedule["current_meter_reading"] = request.form.get(
+                    "current_meter_reading", type=float
+                )
+
+            # === 5. HANDLE NEW FILE UPLOADS ===
+            # Preserve existing file_metadata_ids
+            existing_file_metadata_ids = machine.get("file_metadata_ids", [])
+            uploaded_file_metadata_ids = []
+            files = request.files.getlist("attachments")
+
+            for file in files:
+                if file and file.filename:
+                    original_filename = secure_filename(file.filename)
+                    content_type = file.content_type
+
+                    gridfs_file_id = fs.put(
+                        file,
+                        filename=original_filename,
+                        content_type=content_type,
+                        uploader_user_id=ObjectId(session["user_id"]),
+                    )
+
+                    gridfs_file_info = fs.get(gridfs_file_id)
+
+                    file_metadata = {
+                        "machine_id": ObjectId(machine_id),
+                        "gridfs_id": gridfs_file_id,
+                        "original_filename": original_filename,
+                        "content_type": content_type,
+                        "size": gridfs_file_info.length,
+                        "upload_timestamp": gridfs_file_info.upload_date,
+                        "uploader_user_id": ObjectId(session["user_id"]),
+                        "uploader_username": session["user_name"],
+                    }
+
+                    result = files_metadata_collection.insert_one(file_metadata)
+                    uploaded_file_metadata_ids.append(result.inserted_id)
+
+            # Combine existing and new file IDs
+            all_file_metadata_ids = (
+                existing_file_metadata_ids + uploaded_file_metadata_ids
+            )
+
+            # === 6. ASSEMBLE AND UPDATE THE MACHINE DOCUMENT ===
+            update_data = {
+                "machine_name": machine_name,
+                "asset_id": asset_id,
+                "current_status": current_status,
+                "criticality": criticality,
+                "tags": tags,
+                "manufacturer": manufacturer,
+                "model_number": model_number,
+                "installation_date": installation_date,
+                "warranty_expiry_date": warranty_expiry_date,
+                "maintenance_schedule": maintenance_schedule,
+                "notes": notes,
+                "file_metadata_ids": all_file_metadata_ids,
+                "updated_at": datetime.datetime.now(),
+            }
+
+            machines_collection.update_one(
+                {"_id": ObjectId(machine_id)}, {"$set": update_data}
+            )
+
+            flash(f"Machine '{machine_name}' updated successfully!", "success")
+            return redirect(url_for("machines.machine_details", machine_id=machine_id))
+
+        except Exception as e:
+            print(f"Error updating machine: {e}")
+            flash(f"An error occurred: {e}", "danger")
+
+    # --- GET Request Logic ---
+    # Fetch data for dropdowns and existing files
+    files_list = []
+    if machine.get("file_metadata_ids"):
+        files_list = list(
+            files_metadata_collection.find(
+                {"_id": {"$in": machine["file_metadata_ids"]}}
+            ).sort("upload_timestamp", -1)
+        )
+
+    meter_units_list = [
+        {"value": "hours", "name": "Hours"},
+        {"value": "cycles", "name": "Cycles"},
+        {"value": "units", "name": "Units Produced"},
+    ]
+    status_list = [
+        {"value": "operating", "name": "Operating"},
+        {"value": "idle", "name": "Idle"},
+        {"value": "under_maintenance", "name": "Under Maintenance"},
+        {"value": "out_of_service", "name": "Out of Service"},
+    ]
+    criticality_list = [
+        {"value": "high", "name": "High"},
+        {"value": "medium", "name": "Medium"},
+        {"value": "low", "name": "Low"},
+    ]
+    # Ensure all_tags and all_manufacturers include current machine's values
+    all_tags = machines_collection.distinct("tags")
+    all_tags = sorted(list(set(all_tags + machine.get("tags", []))))
+
+    all_manufacturers = machines_collection.distinct("manufacturer")
+    all_manufacturers = sorted(
+        list(set(all_manufacturers + [machine.get("manufacturer")]))
+    )
+    all_manufacturers = [m for m in all_manufacturers if m]  # filter out None
+
+    return render_template(
+        "pages/machines/edit.html",
+        machine=machine,
+        files_list=files_list,
+        meter_units_list=meter_units_list,
+        status_list=status_list,
+        criticality_list=criticality_list,
+        all_tags=all_tags,
+        all_manufacturers=all_manufacturers,
+    )
+
+
 @blueprint.route("/details/<string:machine_id>", methods=["GET"])
 @login_required
 def machine_details(machine_id):
@@ -338,6 +551,46 @@ def machine_details(machine_id):
         status_list=status_list,
         upcoming_maintenance=upcoming_maintenance,
     )
+
+
+@blueprint.route("/files/delete/<string:metadata_id>", methods=["DELETE"])
+@login_required
+def delete_machine_file(metadata_id):
+    """Deletes a specific file and its metadata."""
+    try:
+        db = get_db()
+        fs = GridFS(db)
+        files_metadata_collection = db["machine_files_metadata"]
+        machines_collection = db["machines"]
+
+        # 1. Find the file metadata
+        file_metadata = files_metadata_collection.find_one(
+            {"_id": ObjectId(metadata_id)}
+        )
+        if not file_metadata:
+            return jsonify({"success": False, "error": "File not found"}), 404
+
+        gridfs_id = file_metadata.get("gridfs_id")
+        machine_id = file_metadata.get("machine_id")
+
+        # 2. Delete from GridFS
+        if gridfs_id:
+            fs.delete(gridfs_id)
+
+        # 3. Delete the metadata document
+        files_metadata_collection.delete_one({"_id": ObjectId(metadata_id)})
+
+        # 4. Pull the metadata ID from the machine's array
+        if machine_id:
+            machines_collection.update_one(
+                {"_id": machine_id},
+                {"$pull": {"file_metadata_ids": ObjectId(metadata_id)}},
+            )
+
+        return jsonify({"success": True, "message": "File deleted successfully."})
+    except Exception as e:
+        print(f"Error deleting file: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @blueprint.route("/files/<string:metadata_id>/download", methods=["GET"])
