@@ -1,10 +1,14 @@
 import click
 import datetime
 import random
+import os
 from faker import Faker  # Import Faker
+import mimetypes  # NEW: Import mimetypes for content_type
 from flask.cli import with_appcontext
+from collections import Counter
 from .pages.database import get_db
 from bson.objectid import ObjectId
+from gridfs import GridFS
 
 
 @click.command("seed-jobs")
@@ -208,3 +212,184 @@ def seed_machines_command(count, clear):
         click.echo(f"Successfully inserted {len(machines_to_create)} test machines.")
     else:
         click.echo("No machines were created.")
+
+
+@click.command("seed-raw-materials")
+@click.option("--count", default=20, help="Number of raw materials to create.")
+@click.option(
+    "--clear",
+    is_flag=True,
+    help="Clear existing raw materials, categories, and suppliers before seeding.",
+)
+@with_appcontext
+def seed_raw_materials_command(count, clear):
+    """Seeds the database with test raw material data."""
+    db = get_db()
+    raw_materials_collection = db.raw_materials
+    categories_collection = db.raw_material_categories
+    suppliers_collection = db.raw_material_suppliers
+    fs = GridFS(db)
+    fake = Faker()
+
+    if clear:
+        raw_materials_collection.delete_many({})
+        categories_collection.delete_many({})
+        suppliers_collection.delete_many({})
+        # Also clear any previously seeded images from GridFS
+        for grid_out in fs.find({"context": "seeded_raw_material_image"}):
+            fs.delete(grid_out._id)
+        click.echo("Cleared existing raw materials, categories, and suppliers.")
+
+    materials_to_create = []
+    now = datetime.datetime.now()
+
+    # --- UPLOAD LOCAL IMAGES TO GRIDFS ---
+    seeded_image_ids = []
+    # Correctly construct the path to your images directory
+    image_dir = os.path.join(
+        os.path.dirname(__file__), "static", "images", "raw-material"
+    )
+
+    if os.path.exists(image_dir):
+        image_files = [
+            f
+            for f in os.listdir(image_dir)
+            if os.path.isfile(os.path.join(image_dir, f))
+        ]
+        if image_files:
+            click.echo(f"Found {len(image_files)} images to seed.")
+            for filename in image_files:
+                file_path = os.path.join(image_dir, filename)
+                # Guess content type for the image
+                content_type = (
+                    mimetypes.guess_type(filename)[0] or "application/octet-stream"
+                )
+                with open(file_path, "rb") as f:
+                    # Store the file in GridFS and add custom metadata
+                    file_id = fs.put(
+                        f,
+                        filename=filename,
+                        content_type=content_type,  # NEW: Explicitly set content_type
+                        context="seeded_raw_material_image",  # Custom metadata for easy cleanup
+                    )
+                    seeded_image_ids.append(file_id)
+                    # NEW: Verify upload immediately
+                    if db.fs.files.find_one({"_id": file_id}):
+                        click.echo(
+                            f"  Verified upload of {filename} with ID {file_id} in fs.files."
+                        )
+                    else:
+                        click.echo(
+                            f"  ERROR: File {filename} with ID {file_id} NOT found in fs.files after put."
+                        )
+            click.echo(f"Uploaded {len(seeded_image_ids)} images to GridFS.")
+        else:
+            click.echo("No images found in the seed directory.")
+    else:
+        click.echo(f"Warning: Image seed directory not found at {image_dir}")
+
+    # Define some sample data pools
+    uom_list = [
+        "kg",
+        "grams",
+        "meters",
+        "mm",
+        "liters",
+        "units",
+        "pairs",
+        "sheets",
+        "spools",
+    ]
+    category_pool = [
+        "Metals",
+        "Plastics",
+        "Fasteners",
+        "Consumables",
+        "Electronics",
+        "Lubricants",
+    ]
+    supplier_pool = [
+        "Global Industrial",
+        "Metal Supermarkets",
+        "Online Metals",
+        "Fastenal",
+        "Digi-Key",
+    ]
+
+    all_categories = []
+    all_suppliers = []
+
+    for i in range(count):
+        # Generate basic info
+        material_type = random.choice(
+            ["Plate", "Rod", "Wire", "Block", "Sheet", "Screw", "Bolt"]
+        )
+        material_name = f"{fake.color_name().capitalize()} {fake.word().capitalize()} {material_type}"
+        sku = f"{material_name[:3].upper()}-{random.randint(100, 999)}-{i}"
+        description = fake.sentence(nb_words=10)
+        uom = random.choice(uom_list)
+
+        # Determine quantity type based on UoM
+        if uom in ["units", "pairs", "sheets"]:
+            initial_quantity = random.randint(0, 200)
+            reorder_level = random.randint(5, 25)
+        else:
+            initial_quantity = round(random.uniform(0, 500), 2)
+            reorder_level = round(random.uniform(10, 50), 2)
+
+        # Select categories and suppliers
+        categories = random.sample(category_pool, k=random.randint(1, 2))
+        suppliers = random.sample(supplier_pool, k=random.randint(1, 2))
+
+        all_categories.extend(categories)
+        all_suppliers.extend(suppliers)
+
+        created_date = fake.date_time_between(start_date="-3m", end_date="now")
+
+        # --- NEW: Assign image_id randomly or None ---
+        image_id = None
+        if (
+            seeded_image_ids and random.random() > 0.3
+        ):  # 70% chance of having an image if available
+            image_id = random.choice(seeded_image_ids)
+        # Assemble the material document
+        material_data = {
+            "material_name": material_name,
+            "sku": sku,
+            "description": description,
+            "uom": uom,
+            "current_quantity": initial_quantity,
+            "reorder_level": reorder_level,
+            "categories": categories,
+            "suppliers": suppliers,
+            "image_id": image_id,  # Use the randomly assigned image_id
+            "created_at": created_date,
+            "updated_at": now,
+            "last_stocked_on": created_date,
+        }
+        materials_to_create.append(material_data)
+
+    # Insert all materials
+    if materials_to_create:
+        raw_materials_collection.insert_many(materials_to_create)
+        click.echo(
+            f"Successfully inserted {len(materials_to_create)} test raw materials."
+        )
+
+        # Update category counts
+        category_counts = Counter(all_categories)
+        for name, num in category_counts.items():
+            categories_collection.update_one(  # This was already correct, no change needed here.
+                {"name": name}, {"$inc": {"count": num}}, upsert=True
+            )
+        click.echo(f"Updated counts for {len(category_counts)} categories.")
+
+        # Update supplier counts
+        supplier_counts = Counter(all_suppliers)
+        for name, num in supplier_counts.items():
+            suppliers_collection.update_one(  # This was already correct, no change needed here.
+                {"name": name}, {"$inc": {"count": num}}, upsert=True
+            )
+        click.echo(f"Updated counts for {len(supplier_counts)} suppliers.")
+    else:
+        click.echo("No raw materials were created.")

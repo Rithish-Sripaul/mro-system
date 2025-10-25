@@ -1,0 +1,287 @@
+{% extends 'layouts/vertical.html' %} {% block title %}Create Raw Material{% endblock title %} {% block extra_css %}
+<link rel="stylesheet" href="{{ config.ASSETS_ROOT }}/plugins/choices/choices.min.css" />
+<link href="{{ config.ASSETS_ROOT }}/plugins/quill/quill.core.css" rel="stylesheet" type="text/css" />
+<link href="{{ config.ASSETS_ROOT }}/plugins/quill/quill.snow.css" rel="stylesheet" type="text/css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@yaireo/tagify@4.35.1/dist/tagify.min.css" />
+
+<style>
+  .tall-input {
+    height: 46px !important;
+  }
+  .choices.is-invalid .choices__inner {
+    border-color: #f1556c;
+  }
+  tagify.is-invalid + .tagify {
+    border-color: #f1556c;
+  }
+  .was-validated #quill-description:has(+ #description:invalid) .ql-container {
+    border-color: #f1556c !important;
+  }
+</style>
+{% endblock extra_css %} {% block page_content %}
+<div class="container-fluid">
+  {% set title='Create Raw Material' %} {% set subtitle='Inventory' %} {% include 'partials/page-title.html' %}
+
+  <div class="row justify-content-center">
+    <div class="col-xxl-8">
+      <div class="card">
+        <div class="card-header"><h4 class="card-title">Register New Raw Material</h4></div>
+        <div class="card-body">
+          <form id="createRawMaterialForm" method="POST" enctype="multipart/form-data" novalidate>
+            <h5 class="fw-semibold mb-3">Core Details</h5>
+            <div class="row">
+              {# MATERIAL NAME #}
+              <div class="col-xl-6">
+                <div class="mb-3">
+                  <label class="form-label">Material Name</label>
+                  <input
+                    type="text"
+                    class="form-control tall-input"
+                    placeholder="e.g., Steel Plate S235 5mm Thick"
+                    name="material_name"
+                    required
+                  />
+                  <div class="invalid-feedback">Please provide a Material Name.</div>
+                </div>
+              </div>
+
+              {# SKU / MATERIAL CODE #}
+              <div class="col-xl-6">
+                <div class="mb-3">
+                  <label class="form-label">SKU / Material Code</label>
+                  <input
+                    type="text"
+                    class="form-control tall-input"
+                    placeholder="e.g., STL-PLT-S235-5"
+                    name="sku"
+                    required
+                  />
+                  <div class="invalid-feedback">Please provide a unique SKU.</div>
+                </div>
+              </div>
+            </div>
+
+            {# DESCRIPTION (QUILL) #}
+            <div class="row">
+              <div class="col-xl-12">
+                <div class="mb-3">
+                  <label class="form-label">Description</label>
+                  <div id="quill-description" style="height: 200px"></div>
+                  <input type="hidden" name="description" id="description" required />
+                  <div class="invalid-feedback">A description is required.</div>
+                </div>
+              </div>
+            </div>
+
+            {# --- DIVIDER --- #}
+            <div class="my-3 border-top border-dashed"></div>
+            <h5 class="fw-semibold mb-3">Stock & Measurement</h5>
+            <div class="row">
+              {# UNIT OF MEASURE (UoM) #}
+              <div class="col-xl-4">
+                <div class="mb-3">
+                  <label for="uom" class="form-label">Unit of Measure (UoM)</label>
+                  <select class="form-select choices-js-required" id="uom" name="uom" data-choices required>
+                    <option value="" disabled selected>Select a unit</option>
+                    {% for unit in uom_list %}
+                    <option value="{{ unit }}">{{ unit }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="invalid-feedback">Please select a Unit of Measure.</div>
+                </div>
+              </div>
+
+              {# INITIAL QUANTITY #}
+              <div class="col-xl-4">
+                <div class="mb-3">
+                  <label class="form-label">Initial Quantity</label>
+                  <input
+                    type="number"
+                    class="form-control tall-input"
+                    name="initial_quantity"
+                    value="0"
+                    step="any"
+                    min="0"
+                    required
+                  />
+                  <div class="invalid-feedback">Please enter a valid quantity (can be 0).</div>
+                </div>
+              </div>
+
+              {# REORDER LEVEL #}
+              <div class="col-xl-4">
+                <div class="mb-3">
+                  <label class="form-label">Reorder Level</label>
+                  <input
+                    type="number"
+                    class="form-control tall-input"
+                    name="reorder_level"
+                    value="0"
+                    step="any"
+                    min="0"
+                    required
+                  />
+                  <div class="invalid-feedback">Please enter a valid reorder level.</div>
+                </div>
+              </div>
+            </div>
+
+            {# --- DIVIDER --- #}
+            <div class="my-3 border-top border-dashed"></div>
+            <h5 class="fw-semibold mb-3">Classification (Optional)</h5>
+            <div class="row">
+              {# CATEGORY #}
+              <div class="col-xl-6">
+                <div class="mb-3">
+                  <label class="form-label">Category</label>
+                  <input
+                    id="categoryTagify"
+                    class="form-control"
+                    name="categories"
+                    placeholder="e.g., Metals, Fasteners"
+                  />
+                </div>
+              </div>
+
+              {# SUPPLIERS #}
+              <div class="col-xl-6">
+                <div class="mb-3">
+                  <label class="form-label">Supplier(s)</label>
+                  <input id="supplierTagify" class="form-control" name="suppliers" placeholder="e.g., Local Steel Co" />
+                </div>
+              </div>
+            </div>
+
+            {# --- DIVIDER --- #}
+            <div class="my-3 border-top border-dashed"></div>
+            <h5 class="fw-semibold mb-3">Material Image</h5>
+            <div class="row">
+              <div class="col-xl-12">
+                <div class="mb-3">
+                  <label for="material_image" class="form-label">Upload Image</label>
+                  <input class="form-control" type="file" id="material_image" name="material_image" accept="image/*" />
+                </div>
+              </div>
+            </div>
+
+            {# --- SUBMIT BUTTON --- #}
+            <div class="d-flex justify-content-start mt-3">
+              <button type="submit" class="btn btn-primary">Create Material</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock page_content %} {% block extra_javascript %}
+<script src="{{ config.ASSETS_ROOT }}/plugins/choices/choices.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify@4.35.1/dist/tagify.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/plugins/quill/quill.js"></script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // === Initialize Choices.js ===
+    const choicesElements = document.querySelectorAll("[data-choices]");
+    let choiceInstances = {};
+    choicesElements.forEach((el) => {
+      const instance = new Choices(el, { searchEnabled: true, shouldSort: false });
+      if (el.id) choiceInstances[el.id] = instance;
+    });
+
+    // === Initialize Tagify ===
+    const categoryInput = document.querySelector("#categoryTagify");
+    if (categoryInput) {
+      new Tagify(categoryInput, {
+        whitelist: {{ categories_whitelist | safe }},
+        dropdown: {
+          maxItems: 20,
+          classname: "tags-look",
+          enabled: 0,
+          closeOnSelect: false,
+        },
+      });
+    }
+
+    const supplierInput = document.querySelector("#supplierTagify");
+    if (supplierInput) {
+      new Tagify(supplierInput, {
+        whitelist: {{ suppliers_whitelist | safe }},
+        dropdown: {
+          maxItems: 20,
+          classname: "tags-look",
+          enabled: 0,
+          closeOnSelect: false,
+        },
+      });
+    }
+
+    // === Initialize Quill Editor ===
+    let quill;
+    if (document.querySelector("#quill-description")) {
+      quill = new Quill("#quill-description", {
+        theme: "snow",
+        modules: {
+          toolbar: [
+            [{ header: [1, 2, false] }],
+            ["bold", "italic", "underline"],
+            [{ list: "ordered" }, { list: "bullet" }],
+            ["clean"],
+          ],
+        },
+        placeholder: "Provide detailed specifications, usage notes, safety info, etc.",
+      });
+
+      const hiddenInput = document.querySelector("#description");
+      quill.on("text-change", function () {
+        if (quill.getLength() > 1) {
+          hiddenInput.value = quill.root.innerHTML;
+        } else {
+          hiddenInput.value = "";
+        }
+      });
+    }
+
+    // === Bootstrap Form Validation ===
+    const form = document.getElementById("createRawMaterialForm");
+    if (form) {
+      form.addEventListener(
+        "submit",
+        function (event) {
+          // Sync Quill content before validation
+          if (quill) {
+            const hiddenInput = document.querySelector("#description");
+            if (quill.getLength() > 1) {
+              hiddenInput.value = quill.root.innerHTML;
+            } else {
+              hiddenInput.value = ""; // Make it empty to trigger :invalid
+            }
+          }
+
+          if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+
+          form.classList.add("was-validated");
+
+          // Custom validation styling for Choices.js
+          form.querySelectorAll(".choices-js-required").forEach(function (select) {
+            const choicesInstance = choiceInstances[select.id];
+            if (choicesInstance) {
+              const parent = choicesInstance.container.element;
+              if (!select.value) {
+                parent.classList.add("is-invalid");
+              } else {
+                parent.classList.remove("is-invalid");
+                parent.classList.add("is-valid");
+              }
+            }
+          });
+        },
+        false
+      );
+    }
+  });
+</script>
+{% endblock extra_javascript %}

@@ -194,6 +194,38 @@
         </div>
       </li>
 
+      {# INVENTORY #}
+      <li class="side-nav-item">
+        <a
+          data-bs-toggle="collapse"
+          href="#sidebarInventoryMenuLevels"
+          aria-expanded="false"
+          aria-controls="sidebarInventoryMenuLevels"
+          class="side-nav-link"
+        >
+          <span class="menu-icon"><i class="ti ti-building-warehouse"></i></span>
+          <span class="menu-text">Inventory</span>
+          <span class="menu-arrow"></span>
+        </a>
+        <div class="collapse" id="sidebarInventoryMenuLevels">
+          <ul class="sub-menu">
+            <li class="side-nav-item">
+              <a href="{{ url_for('inventory.manage_raw_materials') }}" class="side-nav-link">
+                {# Added active class for demonstration #}
+                <span class="menu-icon"><i class="ti ti-packages"></i></span>
+                <span class="menu-text">Manage Raw Materials</span>
+              </a>
+            </li>
+            <li class="side-nav-item">
+              <a href="{{ url_for('inventory.create_raw_material') }}" class="side-nav-link">
+                <span class="menu-icon"><i class="ti ti-circle-plus"></i></span>
+                <span class="menu-text">Create Raw Material</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </li>
+
       <li class="side-nav-item">
         <a href="/landing" target="_blank" class="side-nav-link">
           <span class="menu-icon"><i class="ti ti-stack-front"></i></span>

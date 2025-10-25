@@ -1,0 +1,416 @@
+{% extends 'layouts/vertical.html' %} {% block title %}Manage Raw Materials{% endblock title %} {% block extra_css %}
+
+<style>
+  .status-select-badge {
+    border: 1px solid #dee2e6; /* Make border visible by default */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    /* Increased font size */
+    font-size: 0.8125rem; /* fs-sm */
+    font-weight: 500; /* 700 was a bit too bold */
+    line-height: 1.5;
+
+    /* 2. Custom padding and arrow */
+    padding: 0.3em 1.75em 0.3em 0.75em; /* top/bottom, right (for arrow), left */
+    background-color: transparent !important;
+
+    /* 3. Add custom arrow icon */
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.5em center;
+    background-size: 1em;
+  }
+
+  /* Keep the badge colors */
+  .status-select-badge.badge-soft-success {
+    color: #0acf97;
+  }
+  .status-select-badge.badge-soft-secondary {
+    color: #6c757d;
+  }
+  .status-select-badge.badge-soft-info {
+    color: #39afd1;
+  }
+  .status-select-badge.badge-soft-danger {
+    color: #f1556c;
+  }
+
+  /* Color the arrow based on the badge color */
+  .status-select-badge.badge-soft-success {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%230acf97' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  }
+  .status-select-badge.badge-soft-secondary {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%236c757d' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  }
+  .status-select-badge.badge-soft-info {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%2339afd1' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  }
+  .status-select-badge.badge-soft-danger {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23f1556c' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  }
+
+  /* Set background on hover/focus to show it's interactive */
+  .status-select-badge:hover,
+  .status-select-badge:focus {
+    box-shadow: none;
+    outline: none;
+  }
+</style>
+
+{% endblock extra_css %} {% block page_content %}
+<div class="container-fluid">
+  {% set title='Manage Raw Materials' %} {% set subtitle='Inventory' %} {% include 'partials/page-title.html' %}
+
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <div class="row row-cols-xxl-4 row-cols-md-2 row-cols-1 g-3 align-items-center">
+            <div class="col">
+              <div class="card border-0 bg-primary bg-opacity-10 shadow-none mb-0">
+                <div class="card-body">
+                  <h5 title="Total Raw Materials">Total Materials</h5>
+                  <div class="d-flex align-items-center gap-2 my-3">
+                    <div class="avatar-md flex-shrink-0">
+                      <span class="avatar-title text-bg-primary bg-opacity-90 rounded-circle fs-22">
+                        <i class="ti ti-building-warehouse"></i>
+                      </span>
+                    </div>
+                    <h3 class="mb-0">{{ stats.total }}</h3>
+                  </div>
+                  <p class="mb-0">
+                    <span class="text-primary"><i class="ti ti-point-filled"></i></span>
+                    <span class="text-nowrap text-muted">Unique Material Types</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+            {# REPLACED "IN STOCK" WITH "ABOVE REORDER LEVEL" #}
+            <div class="col">
+              <div class="card border-0 bg-success bg-opacity-10 shadow-none mb-0">
+                <div class="card-body">
+                  <h5 title="Materials Above Reorder Level">Above Reorder Level</h5>
+                  <div class="d-flex align-items-center gap-2 my-3">
+                    <div class="avatar-md flex-shrink-0">
+                      <span class="avatar-title text-bg-success bg-opacity-90 rounded-circle fs-22">
+                        <i class="ti ti-arrow-up-circle"></i>
+                        {# Changed icon #}
+                      </span>
+                    </div>
+                    <h3 class="mb-0">{{ stats.above_reorder_level }}</h3>
+                    {# Changed stat #}
+                  </div>
+                  <p class="mb-0">
+                    <span class="text-success"><i class="ti ti-point-filled"></i></span>
+                    <span class="text-nowrap text-muted">Sufficient Stock</span>
+                    {# Changed description #}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="col">
+              <div class="card border-0 bg-warning bg-opacity-10 shadow-none mb-0">
+                <div class="card-body">
+                  <h5 title="Materials Below Reorder Level">Below Reorder Level</h5>
+                  <div class="d-flex align-items-center gap-2 my-3">
+                    <div class="avatar-md flex-shrink-0">
+                      <span class="avatar-title text-bg-warning bg-opacity-90 rounded-circle fs-22">
+                        <i class="ti ti-alert-triangle"></i>
+                      </span>
+                    </div>
+                    <h3 class="mb-0">{{ stats.below_reorder_level }}</h3>
+                  </div>
+                  <p class="mb-0">
+                    <span class="text-warning"><i class="ti ti-point-filled"></i></span>
+                    <span class="text-nowrap text-muted">Requires Attention</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card border-0 bg-danger bg-opacity-10 shadow-none mb-0">
+                <div class="card-body">
+                  <h5 title="Materials Out of Stock">Out of Stock</h5>
+                  <div class="d-flex align-items-center gap-2 my-3">
+                    <div class="avatar-md flex-shrink-0">
+                      <span class="avatar-title text-bg-danger bg-opacity-90 rounded-circle fs-22">
+                        <i class="ti ti-x"></i>
+                      </span>
+                    </div>
+                    <h3 class="mb-0">{{ stats.out_of_stock }}</h3>
+                  </div>
+                  <p class="mb-0">
+                    <span class="text-danger"><i class="ti ti-point-filled"></i></span>
+                    <span class="text-nowrap text-muted">Quantity is Zero</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      <div data-table data-table-rows-per-page="10" class="card">
+        <div class="card-header">
+          <h4 class="card-title">All Raw Materials</h4>
+        </div>
+
+        <div class="card-header border-light justify-content-between">
+          <div class="d-flex gap-2">
+            <div class="app-search">
+              <input data-table-search type="search" class="form-control" placeholder="Search materials..." />
+              <i data-lucide="search" class="app-search-icon text-muted"></i>
+            </div>
+            <button data-table-delete-selected class="btn btn-danger d-none">Delete Selected</button>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="me-2 fw-semibold">Filter By:</span>
+
+            {# CATEGORY - Filter #}
+            <div class="app-search">
+              <select data-table-filter="categories" class="form-select form-control my-1 my-md-0">
+                <option value="All">All Categories</option>
+                {% for category in all_categories %}
+                <option value="{{ category }}">{{ category }}</option>
+                {% endfor %}
+              </select>
+              <i class="ti ti-category-2 app-search-icon text-muted"></i>
+              {# Changed icon to Tabler #}
+            </div>
+
+            {# SUPPLIER - Filter #}
+            <div class="app-search">
+              <select data-table-filter="suppliers" class="form-select form-control my-1 my-md-0">
+                <option value="All">All Suppliers</option>
+                {% for supplier in all_suppliers %}
+                <option value="{{ supplier }}">{{ supplier }}</option>
+                {% endfor %}
+              </select>
+              <i data-lucide="truck" class="app-search-icon text-muted"></i>
+            </div>
+
+            {# STOCK LEVEL - Filter #}
+            <div class="app-search">
+              <select data-table-filter="stock_level" class="form-select form-control my-1 my-md-0">
+                <option value="All">All Stock Levels</option>
+                <option value="above_reorder">Above Reorder Level</option>
+                <option value="below_reorder">Below Reorder Level</option>
+                <option value="out_of_stock">Out of Stock</option>
+              </select>
+              <i class="ti ti-chart-bar app-search-icon text-muted"></i>
+              {# New icon #}
+            </div>
+
+            {# UoM - Filter #}
+            <div class="app-search">
+              <select data-table-filter="uom" class="form-select form-control my-1 my-md-0">
+                <option value="All">All UoMs</option>
+                {% for uom in all_uoms %}
+                <option value="{{ uom }}">{{ uom }}</option>
+                {% endfor %}
+              </select>
+              <i data-lucide="ruler" class="app-search-icon text-muted"></i>
+            </div>
+
+            <div>
+              <select data-table-set-rows-per-page class="form-select form-control my-1 my-md-0">
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
+                <option value="15">15</option>
+                <option value="20">20</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-custom table-centered table-select table-hover w-100 mb-0">
+            <thead class="bg-light align-middle bg-opacity-25 thead-sm">
+              <tr class="text-uppercase fs-xxs">
+                <th class="ps-3" style="width: 1%">
+                  <input
+                    data-table-select-all
+                    class="form-check-input form-check-input-light fs-14 mt-0"
+                    type="checkbox"
+                    value="option"
+                  />
+                </th>
+                <th data-table-sort="material_name">Material Name</th>
+                <th data-table-sort="sku">SKU</th>
+                <th data-table-sort="uom" data-column="uom">UoM</th>
+                <th data-table-sort="current_quantity" data-column="stock_level">Current Qty</th>
+                <th data-table-sort="reorder_level">Reorder Level</th>
+                <th data-table-sort data-column="categories">Categories</th>
+                <th data-table-sort data-column="suppliers">Suppliers</th>
+                <th data-table-sort="last_stocked_on">Last Stocked</th>
+                <th class="text-center" style="width: 1%">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for material in raw_materials_list %}
+              <tr>
+                <td class="ps-3">
+                  <input
+                    class="form-check-input form-check-input-light fs-14 product-item-check mt-0"
+                    type="checkbox"
+                    value="option"
+                  />
+                </td>
+                {# MATERIAL NAME #}
+                <td>
+                  <div class="d-flex">
+                    <div class="avatar-md me-3 flex-shrink-0">
+                      {% if material.image_id %}
+                      <img
+                        src="{{ url_for('inventory.get_raw_material_image', image_id=material.image_id) }}"
+                        alt="{{ material.material_name }}"
+                        class="img-fluid rounded"
+                        style="width: 100%; height: 100%; object-fit: cover"
+                      />
+                      {% else %}
+                      <span class="avatar-title bg-soft-primary text-primary rounded fs-20">
+                        <i class="ti ti-box"></i>
+                      </span>
+                      {% endif %}
+                    </div>
+                    <div>
+                      <h5 class="mb-1">
+                        <a data-sort="material_name" href="#!" class="link-reset">{{ material.material_name }}</a>
+                      </h5>
+                      <p class="text-muted mb-0 fs-xxs">SKU: {{ material.sku }}</p>
+                    </div>
+                  </div>
+                </td>
+
+                {# SKU #}
+                <td>{{ material.sku }}</td>
+
+                {# UoM #}
+                <td>{{ material.uom }}</td>
+
+                {# CURRENT QUANTITY #}
+                <td
+                  data-value="{% if material.current_quantity == 0 %}out_of_stock{% elif material.current_quantity <= material.reorder_level %}below_reorder{% else %}above_reorder{% endif %}"
+                >
+                  {% if material.current_quantity == 0 %}
+                  <span class="badge badge-soft-danger fs-sm">{{ material.current_quantity }} {{ material.uom }}</span>
+                  {% elif material.current_quantity <= material.reorder_level %}
+                  <span class="badge badge-soft-warning fs-sm">{{ material.current_quantity }} {{ material.uom }}</span>
+                  {% else %}
+                  <span class="badge badge-soft-success fs-sm">{{ material.current_quantity }} {{ material.uom }}</span>
+                  {% endif %}
+                </td>
+
+                {# REORDER LEVEL #}
+                <td>{{ material.reorder_level }}</td>
+
+                {# CATEGORIES #}
+                <td
+                  data-tags="{% for category in material.categories %}|{{ category }}|{% endfor %}"
+                  data-column="categories"
+                >
+                  {% for category in material.categories %}
+                  <span class="badge badge-soft-info me-1 fs-xxs">{{ category }}</span>
+                  {% else %}
+                  <span class="text-muted fs-xxs">No categories</span>
+                  {% endfor %}
+                </td>
+
+                {# SUPPLIERS #}
+                <td
+                  data-tags="{% for supplier in material.suppliers %}|{{ supplier }}|{% endfor %}"
+                  data-column="suppliers"
+                >
+                  {% for supplier in material.suppliers %}
+                  <span class="badge badge-soft-secondary me-1 fs-xxs">{{ supplier }}</span>
+                  {% else %}
+                  <span class="text-muted fs-xxs">No suppliers</span>
+                  {% endfor %}
+                </td>
+
+                {# LAST STOCKED ON #}
+                <td data-sort="last_stocked_on">
+                  {{ material.last_stocked_on.strftime('%d %b, %Y') }}
+                  <small class="text-muted">{{ material.last_stocked_on.strftime('%I:%M %p') }}</small>
+                </td>
+
+                {# ACTIONS #}
+                <td>
+                  <div class="d-flex justify-content-center gap-1">
+                    <a
+                      href="#!"
+                      {#
+                      Placeholder
+                      for
+                      material
+                      details
+                      page
+                      #}
+                      class="btn btn-light btn-icon btn-sm rounded-circle"
+                    >
+                      <i class="ti ti-eye fs-lg"></i>
+                    </a>
+                    <a
+                      href="#!"
+                      {#
+                      Placeholder
+                      for
+                      material
+                      edit
+                      page
+                      #}
+                      class="btn btn-light btn-icon btn-sm rounded-circle"
+                    >
+                      <i class="ti ti-edit fs-lg"></i>
+                    </a>
+                    <a href="#" data-table-delete-row class="btn btn-danger btn-icon btn-sm rounded-circle">
+                      <i class="ti ti-trash fs-lg"></i>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer border-0">
+          <div class="d-flex justify-content-between align-items-center">
+            <div data-table-pagination-info="raw materials"></div>
+            <div data-table-pagination></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock page_content %} {% block extra_javascript %}
+<script src="{{ config.ASSETS_ROOT }}/js/pages/custom-table.js"></script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // No specific AJAX status update like machines, but you can add it here later
+    // if you implement quick stock adjustments or similar.
+    // Example for delete button (will need a backend endpoint)
+    // document.querySelectorAll('[data-table-delete-row]').forEach(button => {
+    //     button.addEventListener('click', function(e) {
+    //         e.preventDefault();
+    //         if (confirm('Are you sure you want to delete this raw material?')) {
+    //             const row = this.closest('tr');
+    //             const materialId = row.querySelector('a[data-sort="material_name"]').href.split('/').pop(); // Assuming ID is in URL
+    //             // Implement fetch to /inventory/delete-raw-material/<material_id>
+    //             console.log('Deleting material:', materialId);
+    //             // After successful deletion, remove row and update table
+    //             // row.remove();
+    //             // window.customTable.tables[0].update(); // Assuming it's the first table
+    //         }
+    //     });
+    // });
+  });
+</script>
+{% endblock extra_javascript %}

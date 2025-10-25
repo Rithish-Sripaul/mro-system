@@ -18,6 +18,7 @@ def register_blueprints(app):
         "pages.authentication",
         "pages.jobs",
         "pages.machines",
+        "pages.inventory",
         "pages.helper",
     ):
         module = import_module("apps.{}.routes".format(module_name))
@@ -52,8 +53,10 @@ def create_app(config):
 
     from apps.commands import seed_jobs_command
     from apps.commands import seed_machines_command
+    from apps.commands import seed_raw_materials_command
 
     app.cli.add_command(seed_jobs_command)
     app.cli.add_command(seed_machines_command)
+    app.cli.add_command(seed_raw_materials_command)
 
     return app
