@@ -241,6 +241,7 @@
                     value="option"
                   />
                 </th>
+                <th style="width: 1%">#</th>
                 <th data-table-sort="material_name">Material Name</th>
                 <th data-table-sort="sku">SKU</th>
                 <th data-table-sort="uom" data-column="uom">UoM</th>
@@ -262,6 +263,7 @@
                     value="option"
                   />
                 </td>
+                <td>{{ loop.index }}</td>
                 {# MATERIAL NAME #}
                 <td>
                   <div class="d-flex">
@@ -281,7 +283,9 @@
                     </div>
                     <div>
                       <h5 class="mb-1">
-                        <a data-sort="material_name" href="#!" class="link-reset">{{ material.material_name }}</a>
+                        <a data-sort="material_name" href="#!" class="link-reset fw-semibold">
+                          {{ material.material_name }}
+                        </a>
                       </h5>
                       <p class="text-muted mb-0 fs-xxs">SKU: {{ material.sku }}</p>
                     </div>
@@ -289,7 +293,7 @@
                 </td>
 
                 {# SKU #}
-                <td>{{ material.sku }}</td>
+                <td class="fw-semibold">{{ material.sku }}</td>
 
                 {# UoM #}
                 <td>{{ material.uom }}</td>

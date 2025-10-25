@@ -1,0 +1,180 @@
+{% extends 'layouts/vertical.html' %} {% block title %}Procurement Details{% endblock title %} {% block page_content %}
+
+<div class="container-fluid">
+  {% set title='Procurement Details' %} {% set subtitle='Inventory' %} {% include 'partials/page-title.html' %}
+
+  <div class="row justify-content-center">
+    <div class="col-xxl-10">
+      <div class="row">
+        <div class="col-xl-9">
+          <div class="card">
+            <div class="card-body px-4">
+              <!-- Invoice Header -->
+              <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-3">
+                <div class="auth-brand mb-0">
+                  <a href="/" class="logo-dark">
+                    <img src="{{ config.ASSETS_ROOT }}/images/logo-black.png" alt="dark logo" height="36" />
+                  </a>
+                  <a href="/" class="logo-light">
+                    <img src="{{ config.ASSETS_ROOT }}/images/logo.png" alt="logo" height="36" />
+                  </a>
+                </div>
+                <div class="text-end">
+                  <h4 class="fw-bold text-dark m-0">Invoice #{{ record.bill_number }}</h4>
+                </div>
+              </div>
+
+              <!-- Invoice Info -->
+              <div class="row">
+                <!-- From (Your Company) -->
+                <div class="col-4">
+                  <h6 class="text-uppercase text-muted mb-2">From</h6>
+                  <p class="mb-1 fw-semibold">Your Company Name</p>
+                  <p class="text-muted mb-1">
+                    123 Factory Lane,
+                    <br />
+                    Industrial Area, City
+                  </p>
+                  <p class="text-muted mb-0">Phone: (123) 456-7890</p>
+                </div>
+
+                <!-- To (Supplier) -->
+                <div class="col-4">
+                  <h6 class="text-uppercase text-muted mb-2">To (Supplier)</h6>
+                  <p class="mb-1 fw-semibold">{{ record.supplier_name }}</p>
+                  {# Add more supplier details here if available in the future #}
+                </div>
+
+                <!-- Date Info -->
+                <div class="col-4 text-end">
+                  <div class="mb-4">
+                    <h6 class="text-uppercase text-muted">Invoice Date</h6>
+                    <p class="mb-0 fw-medium">{{ record.bill_date.strftime('%d %b, %Y') }}</p>
+                  </div>
+                  <div>
+                    <h6 class="text-uppercase text-muted">Logged On</h6>
+                    <p class="mb-0 fw-medium">{{ record.created_at.strftime('%d %b, %Y') }}</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Product Table -->
+              <div class="table-responsive mt-4">
+                <table class="table table-bordered table-nowrap text-center align-middle">
+                  <thead class="bg-light align-middle bg-opacity-25 thead-sm">
+                    <tr class="text-uppercase fs-xxs">
+                      <th style="width: 50px">#</th>
+                      <th class="text-start">Material Details</th>
+                      <th>Qty</th>
+                      <th>Unit Price</th>
+                      <th class="text-end">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for item in record.procurement_items %}
+                    <tr>
+                      <td>{{ loop.index }}</td>
+                      <td class="text-start">
+                        <div class="d-flex align-items-center gap-2">
+                          <div>
+                            <strong>{{ item.material_name }}</strong>
+                            <div class="text-muted small">({{ item.description }})</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>{{ item.quantity }}</td>
+                      <td>₹{{ "%.2f"|format(item.unit_price) }}</td>
+                      <td class="text-end">₹{{ "%.2f"|format(item.total_price) }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Summary Table -->
+              <div class="d-flex justify-content-end">
+                <table class="table w-auto table-borderless text-end">
+                  <tbody>
+                    <tr>
+                      <td class="fw-medium">Subtotal</td>
+                      <td>₹{{ "%.2f"|format(record.subtotal) }}</td>
+                    </tr>
+                    {# Add logic for taxes/discounts here if stored in the record #}
+                    <tr class="border-top pt-2 fs-5 fw-bold">
+                      <td>Total</td>
+                      <td>₹{{ "%.2f"|format(record.grand_total) }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Note -->
+              {% if record.notes %}
+              <div class="mt-lg-4 mt-2 bg-light bg-opacity-50 rounded px-3 py-2">
+                <p class="mb-0 text-muted">
+                  <strong>Note:</strong>
+                  {{ record.notes }}
+                </p>
+              </div>
+              {% endif %}
+
+              <!-- Footer -->
+              <div class="mt-4">
+                <p class="fw-semibold mb-3">Thank you for your business!</p>
+                <img src="{{ config.ASSETS_ROOT }}/images/sign.png" alt="Company Logo" height="42" />
+                <p class="text-muted fs-xxs fst-italic">Authorized Signature</p>
+              </div>
+            </div>
+          </div>
+          <!-- end card-->
+        </div>
+        <!-- end col-9-->
+
+        <div class="col-xl-3 d-print-none">
+          <div class="card card-top-sticky">
+            <div class="card-body">
+              <div class="justify-content-center d-flex flex-column gap-2">
+                <a
+                  href="{{ url_for('inventory.edit_procurement_record', record_id=record._id) }}"
+                  class="btn btn-light"
+                >
+                  <i class="ti ti-pencil me-1"></i>
+                  Edit
+                </a>
+                <a href="javascript:window.print()" class="btn btn-primary">
+                  <i class="ti ti-printer me-1"></i>
+                  Print Invoice
+                </a>
+                {% if record.bill_file_id %}
+                <a
+                  href="{{ url_for('inventory.get_raw_material_image', image_id=record.bill_file_id) }}"
+                  class="btn btn-outline-success"
+                  download="Bill-{{ record.bill_number }}.pdf"
+                  target="_blank"
+                >
+                  <i class="ti ti-download me-1"></i>
+                  Download Bill
+                </a>
+                {% else %}
+                <a href="javascript: void(0);" class="btn btn-outline-success disabled">
+                  <i class="ti ti-download me-1"></i>
+                  Download Bill
+                </a>
+                {% endif %}
+              </div>
+            </div>
+            <!-- end card-body-->
+          </div>
+          <!-- end card-->
+        </div>
+        <!-- end col-3-->
+      </div>
+      <!-- end row-->
+    </div>
+    <!-- end col-10-->
+  </div>
+  <!-- end row-->
+</div>
+<!-- container -->
+
+{% endblock page_content %}

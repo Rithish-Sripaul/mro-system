@@ -217,6 +217,13 @@
               </a>
             </li>
             <li class="side-nav-item">
+              <a href="{{ url_for('inventory.restock_raw_material') }}" class="side-nav-link">
+                {# Added active class for demonstration #}
+                <span class="menu-icon"><i class="ti ti-package-import"></i></span>
+                <span class="menu-text">Restock Materials</span>
+              </a>
+            </li>
+            <li class="side-nav-item">
               <a href="{{ url_for('inventory.create_raw_material') }}" class="side-nav-link">
                 <span class="menu-icon"><i class="ti ti-circle-plus"></i></span>
                 <span class="menu-text">Create Raw Material</span>

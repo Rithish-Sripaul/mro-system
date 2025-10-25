@@ -1,0 +1,658 @@
+{% extends 'layouts/vertical.html' %} {% block title %}Restock Raw Material{% endblock title %} {% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="{{ config.ASSETS_ROOT }}/plugins/daterangepicker/daterangepicker.css" type="text/css" />
+<style>
+  /* Tom Select integration styles */
+  .ts-control {
+    padding: 0.4375rem 0.875rem; /* Match .form-control padding */
+  }
+  /* Fix for dropdown transparency and layering */
+  .ts-dropdown {
+    z-index: 1060 !important; /* Higher than most elements, similar to modals */
+    background-color: #fff !important; /* Force a solid white background */
+    border: 1px solid #dee2e6 !important; /* A standard light gray border */
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important; /* Add a shadow for depth */
+  }
+  /* Add hover/active state for dropdown options */
+  .ts-dropdown .option:hover,
+  .ts-dropdown .option.active {
+    background-color: #f8f9fa !important; /* A standard light hover color */
+    color: #212529 !important; /* Standard dark text color for readability */
+  }
+
+  /* Custom styling for the remove item button */
+  .remove-item-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    line-height: 30px; /* Helps vertically center the '×' */
+    font-size: 1.4rem; /* Makes the '×' larger */
+    font-weight: 600;
+  }
+  .remove-item-btn:hover {
+    background-color: #d03f54 !important; /* A darker red for hover */
+  }
+
+  /* Custom styling for the file upload area */
+  .file-upload-wrapper {
+    border: 2px dashed #dee2e6;
+    border-radius: 0.375rem;
+    padding: 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition:
+      border-color 0.15s ease-in-out,
+      background-color 0.15s ease-in-out;
+  }
+  .file-upload-wrapper:hover {
+    border-color: var(--bs-primary);
+    background-color: #f8f9fa;
+  }
+  .file-upload-wrapper .file-upload-icon {
+    font-size: 2.5rem;
+    color: var(--bs-secondary-color);
+  }
+  .file-upload-wrapper .file-upload-text {
+    color: var(--bs-body-color);
+  }
+
+  .form-control-sm {
+    height: 40px;
+  }
+</style>
+{% endblock extra_css %} {% block page_content %}
+
+<div class="container-fluid">
+  {% set title='Restock Raw Material' %} {% set subtitle='Inventory' %} {% include 'partials/page-title.html' %}
+
+  <div class="row justify-content-center">
+    <div class="col-xxl-8">
+      {# Changed to 7 for the form #}
+      <div class="card">
+        <form id="restockForm" method="POST" enctype="multipart/form-data" novalidate>
+          <div class="card-body p-4">
+            <!-- Bill Details Header -->
+            <div class="row">
+              <div class="col-lg-4">
+                <div class="mb-3">
+                  <label for="supplierName" class="form-label">Supplier</label>
+                  <select id="supplierName" name="supplier_name" class="form-select" required>
+                    <option value="" disabled selected>Select a supplier</option>
+                    {% for supplier in all_suppliers %}
+                    <option value="{{ supplier }}">{{ supplier }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="invalid-feedback">Please select a supplier.</div>
+                </div>
+              </div>
+              <div class="col-lg-4">
+                <div class="mb-3">
+                  <label for="billNumber" class="form-label">Bill / Invoice #</label>
+                  <input
+                    type="text"
+                    id="billNumber"
+                    name="bill_number"
+                    class="form-control"
+                    placeholder="e.g., 78/2024-25"
+                    required
+                  />
+                  <div class="invalid-feedback">Please enter the bill number.</div>
+                </div>
+              </div>
+              <div class="col-lg-4">
+                <div class="mb-3">
+                  <label for="billDate" class="form-label">Bill Date</label>
+                  <input
+                    type="text"
+                    id="billDate"
+                    name="bill_date"
+                    class="form-control"
+                    data-provider="flatpickr"
+                    data-date-format="Y-m-d"
+                    id="billDate"
+                    data-toggle="date-picker"
+                    data-single-date-picker="true"
+                    data-locale="{'format': 'YYYY-MM-DD'}"
+                    placeholder="Select Date"
+                    required
+                  />
+                  <div class="invalid-feedback">Please select the bill date.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Items Table -->
+            <div class="table-responsive mt-3">
+              <h5 class="fw-semibold mb-3">Purchased Materials</h5>
+              <table class="table table-bordered table-nowrap align-middle">
+                <thead class="bg-light align-middle bg-opacity-25 thead-sm">
+                  <tr class="text-uppercase fs-xxs">
+                    <th style="width: 40%">Material</th>
+                    <th style="width: 15%">Quantity</th>
+                    <th style="width: 15%">Unit</th>
+                    <th style="width: 15%">Unit Price</th>
+                    <th style="width: 15%">Total</th>
+                    <th style="width: 5%" class="text-center">
+                      <i class="ti ti-trash"></i>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id="stock-items">
+                  <!-- Item rows will be added here by JavaScript -->
+                </tbody>
+              </table>
+              <button type="button" id="addItemBtn" class="btn btn-soft-primary mt-2">
+                <i class="ti ti-plus"></i>
+                Add Material
+              </button>
+            </div>
+
+            <!-- Bill Upload, Notes & Totals -->
+            <div class="row mt-4 d-flex align-items-stretch">
+              <div class="col-lg-4 d-flex flex-column">
+                <div class="mb-3 flex-grow-1 d-flex flex-column">
+                  <label for="billUpload" class="form-label">Upload Bill / Invoice</label>
+                  <div class="file-upload-wrapper flex-grow-1" onclick="document.getElementById('billUpload').click();">
+                    <i class="ti ti-cloud-upload file-upload-icon"></i>
+                    <p class="mb-0 mt-2 file-upload-text">Click to upload or drag and drop</p>
+                    <small class="text-muted">PDF, PNG, JPG supported</small>
+                  </div>
+                  <input class="d-none" type="file" id="billUpload" name="bill_upload" accept="image/*,.pdf" />
+                </div>
+              </div>
+              <div class="col-lg-4 d-flex flex-column">
+                <div class="mb-3 flex-grow-1 d-flex flex-column">
+                  <label for="notes" class="form-label">Notes</label>
+                  <textarea
+                    id="notes"
+                    name="notes"
+                    class="form-control flex-grow-1"
+                    placeholder="Add any notes about this purchase..."
+                  ></textarea>
+                </div>
+              </div>
+              <div class="col-lg-4">
+                <div class="card bg-light bg-opacity-50 shadow-none h-100">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                      <span class="fw-medium">Subtotal:</span>
+                      <span id="subtotal" class="fw-medium">₹0.00</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                      <span>Taxes / Fees:</span>
+                      <input
+                        type="number"
+                        id="taxes"
+                        class="form-control form-control-sm text-end"
+                        style="width: 100px"
+                        value="0"
+                        step="any"
+                      />
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                      <span>Discount:</span>
+                      <input
+                        type="number"
+                        id="discount"
+                        class="form-control form-control-sm text-end"
+                        style="width: 100px"
+                        value="0"
+                        step="any"
+                      />
+                    </div>
+                    <div class="border-top border-dashed my-2"></div>
+                    <div class="d-flex justify-content-between">
+                      <h5 class="mb-0">Grand Total:</h5>
+                      <h5 id="grandTotal" class="mb-0">₹0.00</h5>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Hidden input to store item data -->
+            <input type="hidden" name="items_data" id="itemsData" />
+
+            <!-- Submit Button -->
+            <div class="d-flex justify-content-end mt-4">
+              <button type="submit" class="btn btn-primary">Log Stock Purchase</button>
+            </div>
+          </div>
+        </form>
+      </div>
+      <!-- end card-->
+    </div>
+
+    {# NEW: Stock Information Card #}
+    <div class="col-xxl-4">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="card-title">Current Stock Levels</h4>
+        </div>
+        <div class="card-body">
+          <p class="text-muted mb-3">Displays the current quantity on hand for selected materials.</p>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered table-nowrap mb-0">
+              <thead class="bg-light align-middle bg-opacity-25 thead-sm">
+                <tr class="text-uppercase fs-xxs">
+                  <th>Material (SKU)</th>
+                  <th class="text-end">On Hand</th>
+                </tr>
+              </thead>
+              <tbody id="current-stock-info-body">
+                {# Stock info rows will be dynamically added here #}
+                <tr><td colspan="2" class="text-center text-muted">No materials selected.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {# NEW: Bill Preview Card #}
+      <div class="card">
+        <div class="card-header">
+          <h4 class="card-title">Bill Preview</h4>
+        </div>
+        <div class="card-body">
+          <div id="bill-preview-container" class="text-center">
+            <i class="ti ti-file-invoice fs-1 text-muted"></i>
+            <p class="text-muted mt-2">No bill uploaded</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- end col-->
+  </div>
+
+  <!-- Dashed Separator -->
+  <div class="my-3 border-top border-dashed"></div>
+
+  {# NEW: Procurement History Table #}
+  <div class="row">
+    <div class="col-12">
+      <div data-table data-table-rows-per-page="5" class="card">
+        <div class="card-header">
+          <h4 class="card-title">Procurement History</h4>
+        </div>
+
+        <div class="card-header border-light justify-content-between">
+          <div class="d-flex gap-2">
+            <div class="app-search">
+              <input data-table-search type="search" class="form-control" placeholder="Search history..." />
+              <i data-lucide="search" class="app-search-icon text-muted"></i>
+            </div>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <span class="me-2 fw-semibold">Filter By:</span>
+
+            {# SUPPLIER - Filter #}
+            <div class="app-search">
+              <select data-table-filter="supplier" class="form-select form-control my-1 my-md-0">
+                <option value="All">All Suppliers</option>
+                {% for supplier in all_suppliers %}
+                <option value="{{ supplier }}">{{ supplier }}</option>
+                {% endfor %}
+              </select>
+              <i data-lucide="truck" class="app-search-icon text-muted"></i>
+            </div>
+
+            <div>
+              <select data-table-set-rows-per-page class="form-select form-control my-1 my-md-0">
+                <option value="5" selected>5</option>
+                <option value="10">10</option>
+                <option value="15">15</option>
+                <option value="25">25</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-custom table-centered table-hover w-100 mb-0">
+            <thead class="bg-light align-middle bg-opacity-25 thead-sm">
+              <tr class="text-uppercase fs-xxs">
+                <th style="width: 3%">#</th>
+                <th data-table-sort="bill_date">Bill Date</th>
+                <th data-table-sort="bill_number">Bill #</th>
+                <th data-table-sort data-column="supplier">Supplier</th>
+                <th>Items</th>
+                <th data-table-sort="total_amount">Total Amount</th>
+                <th class="text-center" style="width: 1%">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for record in procurement_history %}
+              <tr>
+                <td>{{ loop.index }}</td>
+                <td data-sort="{{ record.bill_date.isoformat() }}">{{ record.bill_date.strftime('%d %b, %Y') }}</td>
+                <td class="fw-semibold">
+                  <a
+                    href="{{ url_for('inventory.procurement_record_detail', record_id=record._id) }}"
+                    class="link-dark"
+                  >
+                    {{ record.bill_number }}
+                  </a>
+                </td>
+                <td data-value="{{ record.supplier_name }}">
+                  <span class="badge badge-soft-secondary fs-xxs">{{ record.supplier_name }}</span>
+                </td>
+                <td>
+                  <ul class="list-unstyled mb-0 fs-sm">
+                    {% for item in record.procurement_items %}
+                    <li>
+                      <span class="fw-semibold">{{ item.material_name }}</span>
+                      ({{ item.quantity }})
+                    </li>
+                    {% endfor %}
+                  </ul>
+                </td>
+                <td>₹{{ "%.2f"|format(record.total_amount) }}</td>
+                <td>
+                  <div class="d-flex justify-content-center gap-1">
+                    {% if record.bill_file_id %}
+                    <a
+                      href="{{ url_for('inventory.get_raw_material_image', image_id=record.bill_file_id) }}"
+                      target="_blank"
+                      class="btn btn-light btn-icon btn-sm rounded-circle"
+                      title="View Bill"
+                    >
+                      <i class="ti ti-file-invoice fs-lg"></i>
+                    </a>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer border-0">
+          <div class="d-flex justify-content-between align-items-center">
+            <div data-table-pagination-info="procurement records"></div>
+            <div data-table-pagination></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- end row-->
+</div>
+<!-- container -->
+
+{% endblock page_content %} {% block extra_javascript %}
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/plugins/moment/moment.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/js/pages/custom-table.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/plugins/daterangepicker/daterangepicker.js"></script>
+<script>
+  // --- Bill Preview Logic ---
+  const billUploadInput = document.getElementById("billUpload");
+  const previewContainer = document.getElementById("bill-preview-container");
+  const originalPreviewContent = previewContainer.innerHTML;
+
+  billUploadInput.addEventListener("change", function (event) {
+    const file = event.target.files[0];
+    previewContainer.innerHTML = ""; // Clear previous preview
+
+    if (!file) {
+      previewContainer.innerHTML = originalPreviewContent; // Restore original content if no file
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+
+    if (file.type.startsWith("image/")) {
+      const img = document.createElement("img");
+      const stockInfoCard = document.getElementById("current-stock-info-body").closest(".card");
+      const previewCardHeader = previewContainer.closest(".card").querySelector(".card-header");
+
+      // Calculate a dynamic height to match the card above it
+      let targetHeight = 300; // A sensible default
+      if (stockInfoCard && previewCardHeader) {
+        targetHeight = stockInfoCard.offsetHeight - previewCardHeader.offsetHeight - 30; // Subtract header and some padding
+      }
+
+      img.src = objectUrl;
+      img.style.maxWidth = "100%";
+      img.style.maxHeight = `${Math.max(targetHeight, 250)}px`; // Set max-height to prevent distortion
+      img.style.borderRadius = "0.375rem";
+      img.style.objectFit = "contain"; // Ensure the whole image is visible within the bounds
+      previewContainer.appendChild(img);
+    } else if (file.type === "application/pdf") {
+      const iframe = document.createElement("iframe");
+      const stockInfoCard = document.getElementById("current-stock-info-body").closest(".card");
+      const previewCardHeader = previewContainer.closest(".card").querySelector(".card-header");
+
+      let targetHeight = 300; // A sensible default
+      if (stockInfoCard && previewCardHeader) {
+        targetHeight = stockInfoCard.offsetHeight - previewCardHeader.offsetHeight - 30; // Subtract header and some padding
+      }
+
+      iframe.src = objectUrl;
+      iframe.style.width = "100%";
+      iframe.style.height = `${Math.max(targetHeight, 250)}px`; // Ensure a minimum height
+      iframe.style.border = "none"; // Keep this
+      previewContainer.appendChild(iframe);
+    } else {
+      previewContainer.innerHTML = `<p class="text-muted">Preview not available for this file type: <br><strong>${file.name}</strong></p>`;
+    }
+  });
+
+  document.addEventListener("DOMContentLoaded", function () {
+    // --- Initialize Tom Select for Supplier ---
+    const supplierSelect = document.getElementById("supplierName");
+    if (supplierSelect) {
+      new TomSelect(supplierSelect, { dropdownParent: "body" });
+    }
+
+    // === Initialize Daterangepickers (as single date pickers) ===
+    const datePickers = document.querySelectorAll('[data-toggle="date-picker"]');
+    datePickers.forEach(function (picker) {
+      let config = {
+        singleDatePicker: true,
+        autoUpdateInput: false, // Don't auto-fill on load
+        locale: {
+          format: "YYYY-MM-DD",
+          cancelLabel: "Clear",
+        },
+      };
+
+      // Safely parse data-locale attribute
+      if (picker.dataset.locale) {
+        try {
+          const localeSettings = JSON.parse(picker.dataset.locale.replace(/'/g, '"'));
+          if (localeSettings.format) {
+            config.locale.format = localeSettings.format;
+          }
+        } catch (e) {
+          console.warn("Could not parse data-locale attribute:", e);
+        }
+      }
+
+      // Initialize the date picker with jQuery
+      $(picker).daterangepicker(config);
+
+      // When a date is applied, format and set the input value
+      $(picker).on("apply.daterangepicker", function (ev, picker) {
+        $(this).val(picker.startDate.format(config.locale.format));
+      });
+
+      // When 'Clear' is clicked, empty the input
+      $(picker).on("cancel.daterangepicker", function (ev, picker) {
+        $(this).val("");
+      });
+    });
+
+    // --- Data & State ---
+    const allMaterials = {{ all_materials_json | safe }};
+    const stockItemsContainer = document.getElementById("stock-items");
+    const addItemBtn = document.getElementById("addItemBtn");
+    let tomSelectInstances = [];
+
+    // --- Functions ---
+    const createItemRow = () => {
+      const rowId = `item-row-${Date.now()}`;
+      const newRow = document.createElement("tr");
+      newRow.id = rowId;
+      newRow.classList.add("item-row");
+      newRow.innerHTML = `
+        <td>
+          <select class="form-select material-select" required>
+            <option value="">Search material...</option>
+            ${allMaterials.map(m => `<option value="${m._id}" data-uom="${m.uom}" data-quantity="${m.current_quantity}">${m.material_name} (${m.sku})</option>`).join("")}
+          </select>
+        </td>
+        <td><input type="number" class="form-control form-control-sm quantity" placeholder="0" min="0" step="any" required></td>
+        <td><input type="text" class="form-control form-control-sm uom" readonly></td>
+        <td><input type="number" class="form-control form-control-sm unit-price" placeholder="0.00" min="0" step="any" required></td>
+        <td><input type="text" class="form-control form-control-sm total-price" readonly></td>
+        <td class="text-center align-middle"><button type="button" class="btn btn-sm btn-danger remove-item-btn">×</button></td>
+      `;
+      stockItemsContainer.appendChild(newRow);
+
+      const selectEl = newRow.querySelector(".material-select");
+      const tomSelect = new TomSelect(selectEl, {
+        create: false,
+        dropdownParent: "body", // <-- This is the key fix for the clipping issue
+        render: {
+          no_results: function () {
+            return '<div class="no-results">No materials found.</div>';
+          },
+        },
+      });
+      tomSelectInstances.push({ id: rowId, instance: tomSelect });
+
+      tomSelect.on("change", (value) => {
+        // Find the material object directly from allMaterials using the selected value (material ID)
+        const material = allMaterials.find(m => m._id === value);
+        newRow.querySelector(".uom").value = material ? material.uom : "";
+        updateTotals();
+        updateStockInfoCard(); // Call new function to update the right card
+      });
+    };
+
+    const updateTotals = () => {
+      let subtotal = 0;
+      document.querySelectorAll(".item-row").forEach((row) => {
+        const quantity = parseFloat(row.querySelector(".quantity").value) || 0;
+        const unitPrice = parseFloat(row.querySelector(".unit-price").value) || 0;
+        const totalPrice = quantity * unitPrice;
+        row.querySelector(".total-price").value = totalPrice.toFixed(2);
+        subtotal += totalPrice;
+      });
+
+      const taxes = parseFloat(document.getElementById("taxes").value) || 0;
+      const discount = parseFloat(document.getElementById("discount").value) || 0;
+      const grandTotal = subtotal + taxes - discount;
+
+      document.getElementById("subtotal").textContent = `₹${subtotal.toFixed(2)}`;
+      document.getElementById("grandTotal").textContent = `₹${grandTotal.toFixed(2)}`;
+    };
+
+    // --- Event Listeners ---
+    addItemBtn.addEventListener("click", createItemRow);
+
+    // Use a single delegated event listener for the whole container
+    stockItemsContainer.addEventListener("click", (e) => {
+      if (e.target.classList.contains("remove-item-btn")) {
+        const row = e.target.closest("tr");
+        const tomSelect = tomSelectInstances.find((ts) => ts.id === row.id);
+        if (tomSelect) tomSelect.instance.destroy();
+        tomSelectInstances = tomSelectInstances.filter((ts) => ts.id !== row.id);
+        row.remove();
+        updateTotals();
+        updateStockInfoCard(); // Update the stock card after removing an item
+      }
+    });
+
+    stockItemsContainer.addEventListener("input", (e) => {
+      if (e.target.classList.contains("quantity") || e.target.classList.contains("unit-price")) {
+        updateTotals();
+      }
+    });
+
+    document.getElementById("taxes").addEventListener("input", updateTotals);
+    document.getElementById("discount").addEventListener("input", updateTotals);
+
+    // --- New Function: Update Stock Info Card ---
+    const currentStockInfoBody = document.getElementById("current-stock-info-body");
+
+    const updateStockInfoCard = () => {
+      currentStockInfoBody.innerHTML = ""; // Clear previous entries
+      const selectedMaterialIds = new Set();
+
+      document.querySelectorAll(".item-row").forEach((row) => {
+        const materialId = row.querySelector(".material-select").value;
+        if (materialId && !selectedMaterialIds.has(materialId)) {
+          selectedMaterialIds.add(materialId);
+          const material = allMaterials.find(m => m._id === materialId);
+
+          if (material) {
+            const stockRow = document.createElement("tr");
+            stockRow.innerHTML = `
+              <td>${material.material_name} (${material.sku})</td>
+              <td class="text-end">${material.current_quantity} ${material.uom}</td>
+            `;
+            currentStockInfoBody.appendChild(stockRow);
+          }
+        }
+      });
+
+      if (selectedMaterialIds.size === 0) {
+        const noMaterialRow = document.createElement("tr");
+        noMaterialRow.innerHTML = `<td colspan="2" class="text-center text-muted">No materials selected.</td>`;
+        currentStockInfoBody.appendChild(noMaterialRow);
+      }
+    };
+
+    // Initial call to populate the stock info card
+    updateStockInfoCard();
+
+    // --- Form Submission ---
+    const form = document.getElementById("restockForm");
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+
+      let itemsData = [];
+      let isItemsValid = true;
+      document.querySelectorAll(".item-row").forEach((row) => {
+        const materialId = row.querySelector(".material-select").value;
+        const quantity = row.querySelector(".quantity").value;
+        const unitPrice = row.querySelector(".unit-price").value;
+
+        if (!materialId || !quantity || !unitPrice || parseFloat(quantity) <= 0) {
+          isItemsValid = false;
+        }
+
+        itemsData.push({
+          material_id: materialId,
+          quantity: parseFloat(quantity),
+          unit_price: parseFloat(unitPrice),
+        });
+      });
+
+      if (itemsData.length === 0) {
+        alert("Please add at least one material to the stock list.");
+        isItemsValid = false;
+      }
+
+      document.getElementById("itemsData").value = JSON.stringify(itemsData);
+
+      if (!form.checkValidity() || !isItemsValid) {
+        event.stopPropagation();
+        alert("Please fill out all required fields and ensure all items have a material, quantity, and price.");
+      } else {
+        form.submit();
+      }
+
+      form.classList.add("was-validated");
+    });
+
+    // --- Initial State ---
+    createItemRow();
+
+  });
+</script>
+
+{% endblock extra_javascript %}
