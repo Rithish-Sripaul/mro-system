@@ -1,6 +1,7 @@
 from flask import (
     Blueprint,
     render_template,
+    jsonify,
     request,
     redirect,
     url_for,
@@ -212,6 +213,11 @@ def manage_raw_materials():
     all_uoms = raw_materials_collection.distinct("uom")
     all_uoms = sorted([u for u in all_uoms if u])
 
+    # --- Fetch active reminders ---
+    active_reminders = list(
+        db.inventory_reminders.find({"status": "pending"}).sort("deadline", 1)
+    )
+
     # --- Compute statistics for dashboard cards ---
     stats = {
         "total": len(raw_materials_list),
@@ -241,8 +247,189 @@ def manage_raw_materials():
         all_categories=all_categories,
         all_suppliers=all_suppliers,
         all_uoms=all_uoms,
+        active_reminders=active_reminders,
         stats=stats,
     )
+
+
+@blueprint.route("/raw-material/<material_id>")
+@login_required
+def raw_material_detail(material_id):
+    """
+    Renders the detailed view for a single raw material.
+    """
+    db = get_db()
+    try:
+        material = db.raw_materials.find_one({"_id": ObjectId(material_id)})
+    except Exception:
+        material = None
+
+    if not material:
+        flash("Raw material not found.", "error")
+        return redirect(url_for("inventory.manage_raw_materials"))
+
+    # --- Determine Stock Status ---
+    if material["current_quantity"] <= 0:
+        material["stock_status"] = {
+            "text": "Out of Stock",
+            "class": "badge-soft-danger",
+        }
+    elif material["current_quantity"] <= material["reorder_level"]:
+        material["stock_status"] = {
+            "text": "Low Stock",
+            "class": "badge-soft-warning",
+        }
+    else:
+        material["stock_status"] = {
+            "text": "Adequate",
+            "class": "badge-soft-success",
+        }
+
+    # --- Find Operations Using This Material ---
+    # This is a placeholder query. You'll need to adjust it based on your
+    # actual 'operations' collection schema.
+    operations_using_material = list(
+        db.operations.find({"materials_used.material_id": ObjectId(material_id)})
+    )
+    # Enrich operations data with machine names
+    machine_ids = [op.get("machine_id") for op in operations_using_material]
+    machines = db.machines.find({"_id": {"$in": machine_ids}})
+    machine_map = {str(m["_id"]): m["machine_name"] for m in machines}
+
+    for op in operations_using_material:
+        op["machine_name"] = machine_map.get(str(op.get("machine_id")), "N/A")
+        # Extract the quantity for the specific material
+        for mat_used in op.get("materials_used", []):
+            if mat_used.get("material_id") == ObjectId(material_id):
+                op["quantity_used"] = mat_used.get("quantity")
+                break
+
+    # --- Find Procurement History for This Material ---
+    procurement_history = list(
+        db.procurement_records.find(
+            {"procurement_items.material_id": material_id}
+        ).sort("bill_date", -1)
+    )
+    # Filter items to only show data for the current material
+    for record in procurement_history:
+        for item in record["procurement_items"]:
+            if item["material_id"] == material_id:
+                record["item_details"] = item
+                break
+
+    # --- Find Active Reminder ---
+    active_reminder = db.inventory_reminders.find_one(
+        {"material_id": ObjectId(material_id), "status": "pending"}
+    )
+
+    return render_template(
+        "pages/inventory/raw-material-details.html",
+        material=material,
+        operations_list=operations_using_material,
+        procurement_history=procurement_history,
+        active_reminder=active_reminder,
+    )
+
+
+@blueprint.route("/raw-material/<material_id>/set-reminder", methods=["POST"])
+@login_required
+def set_raw_material_reminder(material_id):
+    """
+    Sets or updates a procurement reminder for a specific raw material.
+    """
+    db = get_db()
+    try:
+        material = db.raw_materials.find_one({"_id": ObjectId(material_id)})
+        if not material:
+            return jsonify({"success": False, "error": "Material not found."}), 404
+
+        # --- Process Form Data ---
+        quantity = request.form.get("quantity_to_order")
+        deadline_str = request.form.get("deadline")
+        notes = request.form.get("notes", "")
+
+        if not quantity or not deadline_str:
+            return (
+                jsonify(
+                    {"success": False, "error": "Quantity and deadline are required."}
+                ),
+                400,
+            )
+
+        deadline = datetime.datetime.strptime(deadline_str, "%Y-%m-%d")
+
+        # --- Create or Update Reminder ---
+        # We use update_one with upsert=True to ensure only one 'pending' reminder
+        # exists per material, simplifying the logic.
+        reminder_doc = {
+            "material_id": ObjectId(material_id),
+            "material_name": material["material_name"],
+            "quantity_to_order": float(quantity),
+            "uom": material["uom"],
+            "deadline": deadline,
+            "notes": notes,
+            "status": "pending",
+            "created_at": datetime.datetime.now(),
+            "created_by": session.get("_user_id"),  # Use .get for safety
+        }
+
+        db.inventory_reminders.update_one(
+            {"material_id": ObjectId(material_id), "status": "pending"},
+            {"$set": reminder_doc},
+            upsert=True,
+        )
+
+        flash(f"Reminder set for {material['material_name']}.", "success")
+        return jsonify({"success": True})
+
+    except Exception as e:
+        print(f"Error setting reminder: {e}")
+        return (
+            jsonify({"success": False, "error": "An unexpected error occurred."}),
+            500,
+        )
+
+
+@blueprint.route("/reminder/<reminder_id>/update-status/<new_status>", methods=["POST"])
+@login_required
+def update_reminder_status(reminder_id, new_status):
+    """
+    Updates the status of a reminder (e.g., to 'completed').
+    """
+    db = get_db()
+    valid_statuses = ["pending", "completed"]
+    if new_status not in valid_statuses:
+        flash(f"Invalid status '{new_status}'.", "error")
+        return redirect(request.referrer or url_for("inventory.manage_raw_materials"))
+
+    result = db.inventory_reminders.update_one(
+        {"_id": ObjectId(reminder_id)}, {"$set": {"status": new_status}}
+    )
+
+    if result.modified_count > 0:
+        flash("Reminder marked as completed.", "success")
+    else:
+        flash("Reminder not found or already updated.", "warning")
+
+    return redirect(request.referrer or url_for("inventory.manage_raw_materials"))
+
+
+@blueprint.route("/reminder/<reminder_id>/delete", methods=["POST"])
+@login_required
+def delete_reminder(reminder_id):
+    """
+    Deletes a reminder.
+    """
+    db = get_db()
+    result = db.inventory_reminders.delete_one({"_id": ObjectId(reminder_id)})
+
+    if result.deleted_count > 0:
+        flash("Reminder deleted successfully.", "success")
+    else:
+        flash("Reminder not found.", "error")
+
+    # Redirect to the previous page, or the manage page as a fallback
+    return redirect(request.referrer or url_for("inventory.manage_raw_materials"))
 
 
 @blueprint.route("/restock-raw-material", methods=["GET", "POST"])

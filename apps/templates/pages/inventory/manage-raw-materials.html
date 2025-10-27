@@ -154,6 +154,106 @@
     </div>
   </div>
 
+  {# --- Active Reminders Section (Collapsible Table) --- #}
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <a
+            class="text-reset"
+            data-bs-toggle="collapse"
+            href="#activeRemindersCollapse"
+            role="button"
+            aria-expanded="false"
+            aria-controls="activeRemindersCollapse"
+          >
+            <h4 class="card-title mb-0">
+              <i class="ti ti-chevron-down fs-lg me-1"></i>
+              Active Procurement Reminders
+              <span class="badge bg-primary-subtle text-primary ms-1">{{ active_reminders|length }}</span>
+            </h4>
+          </a>
+        </div>
+        <div class="collapse" id="activeRemindersCollapse">
+          {% if active_reminders %}
+          <div class="table-responsive">
+            <table class="table table-hover table-centered mb-0">
+              <thead class="bg-light-subtle">
+                <tr class="text-uppercase fs-xxs">
+                  <th style="width: 1%">#</th>
+                  <th>Material Name</th>
+                  <th>Quantity to Order</th>
+                  <th>Deadline</th>
+                  <th>Notes</th>
+                  <th class="text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for reminder in active_reminders %}
+                <tr>
+                  <td>{{ loop.index }}</td>
+                  <td>
+                    <a
+                      href="{{ url_for('inventory.raw_material_detail', material_id=reminder.material_id) }}"
+                      class="link-dark fw-semibold"
+                    >
+                      {{ reminder.material_name }}
+                    </a>
+                  </td>
+                  <td>{{ reminder.quantity_to_order }} {{ reminder.uom }}</td>
+                  <td>
+                    <span class="badge badge-soft-primary">{{ reminder.deadline.strftime('%d %b, %Y') }}</span>
+                  </td>
+                  <td class="text-muted fst-italic">{{ reminder.notes or 'N/A' }}</td>
+                  <td class="text-center">
+                    <div class="d-flex justify-content-center gap-1">
+                      <a
+                        href="{{ url_for('inventory.raw_material_detail', material_id=reminder.material_id) }}"
+                        class="btn btn-light btn-icon btn-sm rounded-circle"
+                        title="View Material"
+                      >
+                        <i class="ti ti-eye fs-lg"></i>
+                      </a>
+                      <form
+                        action="{{ url_for('inventory.update_reminder_status', reminder_id=reminder._id, new_status='completed') }}"
+                        method="POST"
+                        class="d-inline"
+                      >
+                        <button
+                          type="submit"
+                          class="btn btn-success btn-icon btn-sm rounded-circle"
+                          title="Mark as Done"
+                        >
+                          <i class="ti ti-check fs-lg"></i>
+                        </button>
+                      </form>
+                      <form
+                        action="{{ url_for('inventory.delete_reminder', reminder_id=reminder._id) }}"
+                        method="POST"
+                        class="d-inline"
+                        onsubmit="return confirm('Are you sure you want to delete this reminder?');"
+                      >
+                        <button type="submit" class="btn btn-danger btn-icon btn-sm rounded-circle" title="Delete">
+                          <i class="ti ti-trash fs-lg"></i>
+                        </button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <div class="card-body text-center py-4">
+            <p class="text-muted mb-0">No active reminders.</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="row">
     <div class="col-12">
       <div data-table data-table-rows-per-page="10" class="card">
@@ -283,7 +383,11 @@
                     </div>
                     <div>
                       <h5 class="mb-1">
-                        <a data-sort="material_name" href="#!" class="link-reset fw-semibold">
+                        <a
+                          data-sort="material_name"
+                          href="{{ url_for('inventory.raw_material_detail', material_id=material._id) }}"
+                          class="link-reset fw-semibold"
+                        >
                           {{ material.material_name }}
                         </a>
                       </h5>
@@ -348,14 +452,7 @@
                 <td>
                   <div class="d-flex justify-content-center gap-1">
                     <a
-                      href="#!"
-                      {#
-                      Placeholder
-                      for
-                      material
-                      details
-                      page
-                      #}
+                      href="{{ url_for('inventory.raw_material_detail', material_id=material._id) }}"
                       class="btn btn-light btn-icon btn-sm rounded-circle"
                     >
                       <i class="ti ti-eye fs-lg"></i>

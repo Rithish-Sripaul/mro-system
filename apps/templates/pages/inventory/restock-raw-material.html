@@ -20,6 +20,15 @@
     color: #212529 !important; /* Standard dark text color for readability */
   }
 
+  .table-custom .link-dark {
+    text-decoration: underline;
+  }
+  /* Custom styling for Bill # link hover */
+  .table-custom .link-dark:hover {
+    color: #4ac397 !important;
+    text-decoration-color: #4ac397 !important;
+  }
+
   /* Custom styling for the remove item button */
   .remove-item-btn {
     width: 32px;
@@ -350,6 +359,14 @@
                 <td>₹{{ "%.2f"|format(record.total_amount) }}</td>
                 <td>
                   <div class="d-flex justify-content-center gap-1">
+                    <a
+                      href="{{ url_for('inventory.procurement_record_detail', record_id=record._id) }}"
+                      class="btn btn-light btn-icon btn-sm rounded-circle"
+                      title="View Details"
+                    >
+                      <i class="ti ti-eye fs-lg"></i>
+                    </a>
+
                     {% if record.bill_file_id %}
                     <a
                       href="{{ url_for('inventory.get_raw_material_image', image_id=record.bill_file_id) }}"
