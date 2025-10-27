@@ -1,0 +1,302 @@
+{% extends 'layouts/vertical.html' %} {% block title %}Jobs List{% endblock title %} {% block extra_css %}
+<style>
+  /* 1. Default state for the badge */
+  .division-badge {
+    background-color: #e9ecef;
+    color: #495057;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: all 0.3s ease-in-out;
+    line-height: 1.5;
+  }
+</style>
+{% endblock extra_css %} {% block page_content %}
+
+<div class="container-fluid">
+  {% set title='Jobs' %} {% set subtitle='List' %} {% include 'partials/page-title.html' %}
+
+  <!-- Widgets -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <div class="row row-cols-xxl-4 row-cols-md-2 row-cols-1 g-3 align-items-center">
+            <div class="col">
+              <div class="card border-0 bg-primary bg-opacity-10 shadow-none mb-0">
+                <div class="card-body">
+                  <h5 title="Total Jobs">Total Jobs</h5>
+                  <div class="d-flex align-items-center gap-2 my-3">
+                    <div class="avatar-md flex-shrink-0">
+                      <span class="avatar-title text-bg-primary bg-opacity-90 rounded-circle fs-22">
+                        <i class="ti ti-briefcase"></i>
+                      </span>
+                    </div>
+                    <h3 class="mb-0">{{ widgets.total_jobs }}</h3>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col">
+              <div class="card border-0 bg-info bg-opacity-10 shadow-none mb-0">
+                <div class="card-body">
+                  <h5 title="In Progress">In Progress</h5>
+                  <div class="d-flex align-items-center gap-2 my-3">
+                    <div class="avatar-md flex-shrink-0">
+                      <span class="avatar-title text-bg-info bg-opacity-90 rounded-circle fs-22">
+                        <i class="ti ti-loader"></i>
+                      </span>
+                    </div>
+                    <h3 class="mb-0">{{ widgets.in_progress_jobs }}</h3>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col">
+              <div class="card border-0 bg-warning bg-opacity-10 shadow-none mb-0">
+                <div class="card-body">
+                  <h5 title="Pending Jobs">Pending</h5>
+                  <div class="d-flex align-items-center gap-2 my-3">
+                    <div class="avatar-md flex-shrink-0">
+                      <span class="avatar-title text-bg-warning bg-opacity-90 rounded-circle fs-22">
+                        <i class="ti ti-clock"></i>
+                      </span>
+                    </div>
+                    <h3 class="mb-0">{{ widgets.pending_jobs }}</h3>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col">
+              <div class="card border-0 bg-success bg-opacity-10 shadow-none mb-0">
+                <div class="card-body">
+                  <h5 title="Completed Jobs">Completed</h5>
+                  <div class="d-flex align-items-center gap-2 my-3">
+                    <div class="avatar-md flex-shrink-0">
+                      <span class="avatar-title text-bg-success bg-opacity-90 rounded-circle fs-22">
+                        <i class="ti ti-circle-check"></i>
+                      </span>
+                    </div>
+                    <h3 class="mb-0">{{ widgets.completed_jobs }}</h3>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- end row -->
+        </div>
+        <!-- end card-body-->
+      </div>
+      <!-- end card-->
+    </div>
+    <!-- end col -->
+  </div>
+
+  <div class="row">
+    <div class="col-12">
+      <div data-table data-table-rows-per-page="10" class="card">
+        <div class="card-header">
+          <h4 class="card-title">Complete Custom Table</h4>
+        </div>
+        <div class="card-header border-light justify-content-between">
+          <div class="d-flex gap-2">
+            <div class="app-search">
+              <input data-table-search type="search" class="form-control" placeholder="Search product name..." />
+              <i data-lucide="search" class="app-search-icon text-muted"></i>
+            </div>
+            <button data-table-delete-selected class="btn btn-danger d-none">Delete</button>
+          </div>
+
+          <div class="d-flex align-items-center gap-2">
+            <span class="me-2 fw-semibold">Filter By:</span>
+
+            <!-- Category Filter -->
+            <div class="app-search">
+              <select data-table-filter="category" class="form-select form-control my-1 my-md-0">
+                <option value="All">Category</option>
+                <option value="Electronics">Electronics</option>
+                <option value="Fashion">Fashion</option>
+                <option value="Home">Home</option>
+                <option value="Sports">Sports</option>
+                <option value="Beauty">Beauty</option>
+              </select>
+              <i data-lucide="tag" class="app-search-icon text-muted"></i>
+            </div>
+
+            <div class="app-search">
+              <select data-table-filter="division" class="form-select form-control my-1 my-md-0">
+                <option value="All">Division</option>
+                {% for division in divisions_dict.values() %}
+                <option value="{{ division }}">{{ division }}</option>
+                {% endfor %}
+              </select>
+              <i data-lucide="building" class="app-search-icon text-muted"></i>
+            </div>
+
+            <div class="app-search">
+              <select data-table-filter="schedule_type" class="form-select form-control my-1 my-md-0">
+                <option value="All">Schedule Type</option>
+                <option value="Priority">Priority</option>
+                <option value="General">General</option>
+              </select>
+              <i data-lucide="calendar-check" class="app-search-icon text-muted"></i>
+            </div>
+
+            <!-- Stock Filter -->
+            <div class="app-search">
+              <select data-table-filter="status" class="form-select form-control my-1 my-md-0">
+                <option value="">Status</option>
+                <option value="Published">Published</option>
+                <option value="Pending">Pending</option>
+                <option value="Out of Stock">Out of Stock</option>
+              </select>
+              <i data-lucide="loader" class="app-search-icon text-muted"></i>
+            </div>
+
+            <div class="app-search">
+              <select data-table-range-filter="deadline" class="form-select form-control my-1 my-md-0">
+                <option value="All" selected>All Deadlines</option>
+                <option value="Today">Today</option>
+                <option value="Tomorrow">Tomorrow</option>
+                <option value="This Week">This Week</option>
+                <option value="Next Week">Next Week</option>
+                <option value="This Month">This Month</option>
+              </select>
+              <i data-lucide="clock-alert" class="app-search-icon text-muted"></i>
+            </div>
+
+            <!-- Records Per Page -->
+            <div>
+              <select data-table-set-rows-per-page class="form-select form-control my-1 my-md-0">
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
+                <option value="15">15</option>
+                <option value="20">20</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-custom table-centered table-select table-hover w-100 mb-0">
+            <thead class="bg-light align-middle bg-opacity-25 thead-sm">
+              <tr class="text-uppercase fs-xxs">
+                <th class="ps-3" style="width: 1%">
+                  <input
+                    data-table-select-all
+                    class="form-check-input form-check-input-light fs-14 mt-0"
+                    type="checkbox"
+                    value="option"
+                  />
+                </th>
+                <th data-table-sort="product">Product</th>
+                <th data-table-sort>Created At</th>
+                <th data-table-sort="division" data-column="division">Division</th>
+                <th data-table-sort data-column="category">Category</th>
+                <th data-table-sort>Operations</th>
+                <th data-table-sort data-column="schedule_type">Schedule</th>
+                <th data-table-sort>Position</th>
+                <th data-table-sort data-column="status">Status</th>
+                <th data-table-sort data-column="deadline">Deadline</th>
+                <th class="text-center" style="width: 1%">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Product Row -->
+              {% for job in jobs_list %}
+              <tr>
+                <td class="ps-3">
+                  <input
+                    class="form-check-input form-check-input-light fs-14 product-item-check mt-0"
+                    type="checkbox"
+                    value="option"
+                  />
+                </td>
+
+                <td>
+                  <div class="d-flex">
+                    <div class="avatar-md me-3">
+                      <div
+                        class="rounded"
+                        style="width: 100%; height: 100%; background-color: {{ job.job_color }};"
+                      ></div>
+                    </div>
+                    <div class="d-flex flex-column justify-content-center mb-0">
+                      <h5 class="mb-0">
+                        <a data-sort="product" href="/ecommerce-product-details" class="link-reset">
+                          {{ job.job_name }}
+                        </a>
+                      </h5>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  {{ job.created_at.strftime('%d %b, %Y') }}
+                  <small class="text-muted">{{ job.created_at.strftime('%I:%M %p') }}</small>
+                </td>
+
+                <td data-tags="{% for division in job.divisions_list %}|{{ division.name }}|{% endfor %}">
+                  {% for division in job.divisions_list %}
+                  <a href="#" class="badge division-badge me-2 px-2">{{ division.name }}</a>
+                  {% endfor %}
+                </td>
+                <td>Electronics</td>
+                <td>
+                  <h5 class="fs-base mb-0 fw-medium">10 / 12</h5>
+                </td>
+
+                {% if job.schedule_type == "priority_schedule" %}
+                <td data-value="Priority">Priority</td>
+                {% else %}
+                <td data-value="General">General</td>
+                {% endif %}
+
+                <td>{{ job.schedule_position }}</td>
+                {% if job.status == "pending" %}
+                <td><span class="badge badge-soft-warning fs-xxs">Pending</span></td>
+                {% else %}
+                <td><span class="badge badge-soft-success fs-xxs">Published</span></td>
+                {% endif %}
+
+                <td>
+                  {{ job.completion_time.strftime('%d %b, %Y') }}
+                  <small class="text-muted">{{ job.completion_time.strftime('%I:%M %p') }}</small>
+                </td>
+                <td>
+                  <div class="d-flex justify-content-center gap-1">
+                    <a
+                      href="{{ url_for('jobs.job_details', job_id=job._id) }}"
+                      class="btn btn-light btn-icon btn-sm rounded-circle"
+                    >
+                      <i class="ti ti-eye fs-lg"></i>
+                    </a>
+                    <a href="#" class="btn btn-light btn-icon btn-sm rounded-circle">
+                      <i class="ti ti-edit fs-lg"></i>
+                    </a>
+                    <a href="#" data-table-delete-row class="btn btn-danger btn-icon btn-sm rounded-circle">
+                      <i class="ti ti-trash fs-lg"></i>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer border-0">
+          <div class="d-flex justify-content-between align-items-center">
+            <div data-table-pagination-info="products"></div>
+            <div data-table-pagination></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- end col -->
+  </div>
+</div>
+{% endblock page_content %} {% block extra_javascript %}
+<!-- Custom Table JS -->
+<script src="{{ config.ASSETS_ROOT }}/js/pages/custom-table.js"></script>
+{% endblock extra_javascript %}

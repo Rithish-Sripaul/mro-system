@@ -22,10 +22,259 @@ blueprint = Blueprint("jobs", __name__, url_prefix="/jobs")
 @blueprint.route("/view_jobs", methods=["GET"])
 def view_jobs():
     db = get_db()
-    jobs_collection = db["jobs"]
+    users_collection = db["users"]
 
-    jobs_list = list(jobs_collection.find({}).sort("created_at", -1))
-    return render_template("pages/jobs/view-jobs.html", jobs=jobs_list)
+    # --- Get filter values from request ---
+    search_query = request.args.get("q", "").strip()
+    status_filter = request.args.get("status", "")
+    team_filter = request.args.get("team", "")
+    deadline_filter = request.args.get("deadline", "")
+
+    # --- Build the match pipeline for filtering ---
+    match_pipeline = {}
+    if search_query:
+        match_pipeline["job_name"] = {"$regex": search_query, "$options": "i"}
+    if status_filter:
+        match_pipeline["status"] = status_filter
+    if team_filter:
+        match_pipeline["coordinators"] = (
+            team_filter  # Assumes coordinator IDs are stored as strings
+        )
+
+    if deadline_filter:
+        now = datetime.datetime.now()
+        today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        if deadline_filter == "today":
+            tomorrow = today + datetime.timedelta(days=1)
+            match_pipeline["completion_time"] = {"$gte": today, "$lt": tomorrow}
+        elif deadline_filter == "this_week":
+            start_of_week = today - datetime.timedelta(days=today.weekday())
+            end_of_week = start_of_week + datetime.timedelta(days=7)
+            match_pipeline["completion_time"] = {
+                "$gte": start_of_week,
+                "$lt": end_of_week,
+            }
+        elif deadline_filter == "this_month":
+            next_month = today.replace(day=28) + datetime.timedelta(days=4)
+            start_of_month = next_month.replace(day=1)
+            end_of_month = (
+                start_of_month.replace(day=28) + datetime.timedelta(days=4)
+            ).replace(day=1)
+            match_pipeline["completion_time"] = {
+                "$gte": start_of_month,
+                "$lt": end_of_month,
+            }
+
+    # --- Pagination Logic ---
+    page = request.args.get("page", 1, type=int)
+    per_page = 8  # Number of jobs per page
+    skip = (page - 1) * per_page
+
+    # --- Create a base pipeline and one for counting ---
+    base_pipeline = []
+    if match_pipeline:
+        base_pipeline.append({"$match": match_pipeline})
+
+    # Get total count of filtered documents
+    count_pipeline = base_pipeline + [{"$count": "total"}]
+    count_result = list(db.jobs.aggregate(count_pipeline))
+    total_jobs = count_result[0]["total"] if count_result else 0
+    total_pages = math.ceil(total_jobs / per_page)
+
+    # --- Main data fetching pipeline ---
+    pipeline = base_pipeline + [
+        # Sort jobs by creation date
+        {"$sort": {"created_at": -1}},
+        {"$skip": skip},
+        {"$limit": per_page},
+        # Lookup for comments count
+        {
+            "$lookup": {
+                "from": "comments",
+                "localField": "_id",
+                "foreignField": "document_id",
+                "as": "comments_info",
+            }
+        },
+        # Lookup for files count
+        {
+            "$lookup": {
+                "from": "job_files_metadata",
+                "localField": "_id",
+                "foreignField": "job_id",
+                "as": "files_info",
+            }
+        },
+        # Convert coordinator string IDs to ObjectIds for the next lookup
+        {
+            "$addFields": {
+                "coordinator_oids": {
+                    "$map": {
+                        "input": "$coordinators",
+                        "as": "coordId",
+                        "in": {"$toObjectId": "$$coordId"},
+                    }
+                }
+            }
+        },
+        # Lookup for coordinator details
+        {
+            "$lookup": {
+                "from": "users",
+                "localField": "coordinator_oids",
+                "foreignField": "_id",
+                "as": "coordinator_details",
+            }
+        },
+        # Lookup for division details
+        {
+            "$lookup": {
+                "from": "divisions",
+                "localField": "divisions",  # This should be an array of ObjectIds
+                "foreignField": "_id",
+                "as": "division_details",
+            }
+        },
+        # Add counts and coordinator details to the main document
+        {
+            "$addFields": {
+                "comments_count": {"$size": "$comments_info"},
+                "files_count": {"$size": "$files_info"},
+                "coordinators_list": "$coordinator_details",
+                "divisions_list": "$division_details",
+            }
+        },
+    ]
+
+    jobs_list = list(db.jobs.aggregate(pipeline)) if total_jobs > 0 else []
+
+    # --- Data for filter dropdowns ---
+    all_teams = list(
+        users_collection.find({}, {"_id": 1, "name": 1, "avatar_url": 1}).sort(
+            "name", 1
+        )
+    )
+    all_statuses = [
+        {"value": "pending", "text": "Pending"},
+        {"value": "in_progress", "text": "In Progress"},
+        {"value": "completed", "text": "Completed"},
+        {"value": "on_hold", "text": "On Hold"},
+    ]
+
+    return render_template(
+        "pages/jobs/view-jobs.html",
+        jobs=jobs_list,
+        page=page,
+        total_pages=total_pages,
+        total_jobs=total_jobs,
+        all_teams=all_teams,
+        all_statuses=all_statuses,
+        filters={
+            "q": search_query,
+            "status": status_filter,
+            "team": team_filter,
+            "deadline": deadline_filter,
+        },
+    )
+
+
+# View jobs list
+@blueprint.route("/view_jobs_list", methods=["GET"])
+def view_jobs_list():
+    db = get_db()
+    users_collection = db["users"]
+    divisions_collection = db["divisions"]
+
+    # --- Get filter values from request (for passing back to view-jobs link) ---
+    search_query = request.args.get("q", "")
+    status_filter = request.args.get("status", "")
+    team_filter = request.args.get("team", "")
+    deadline_filter = request.args.get("deadline", "")
+
+    # --- Aggregation for Widgets ---
+    widget_pipeline = [
+        {
+            "$group": {
+                "_id": None,
+                "total_jobs": {"$sum": 1},
+                "pending_jobs": {
+                    "$sum": {"$cond": [{"$eq": ["$status", "pending"]}, 1, 0]}
+                },
+                "in_progress_jobs": {
+                    "$sum": {"$cond": [{"$eq": ["$status", "in_progress"]}, 1, 0]}
+                },
+                "completed_jobs": {
+                    "$sum": {"$cond": [{"$eq": ["$status", "completed"]}, 1, 0]}
+                },
+            }
+        }
+    ]
+    widget_data = list(db.jobs.aggregate(widget_pipeline))
+    widgets = (
+        widget_data[0]
+        if widget_data
+        else {
+            "total_jobs": 0,
+            "pending_jobs": 0,
+            "in_progress_jobs": 0,
+            "completed_jobs": 0,
+        }
+    )
+
+    # --- Main data fetching pipeline ---
+    pipeline = [
+        {"$sort": {"created_at": -1}},
+        # Lookup for division details
+        {
+            "$lookup": {
+                "from": "divisions",
+                "localField": "divisions",  # This should be an array of ObjectIds
+                "foreignField": "_id",
+                "as": "division_details",
+            }
+        },
+        # Add division details to the main document
+        {
+            "$addFields": {
+                "divisions_list": "$division_details",
+            }
+        },
+    ]
+    jobs_list = list(db.jobs.aggregate(pipeline)) if widgets["total_jobs"] > 0 else []
+
+    # --- Data for divisions dictionary ---
+    divisions_dict = {
+        div["_id"]: div["name"]
+        for div in divisions_collection.find({}, {"_id": 1, "name": 1})
+    }
+
+    # --- Data for filter dropdowns ---
+    all_teams = list(
+        users_collection.find({}, {"_id": 1, "name": 1, "avatar_url": 1}).sort(
+            "name", 1
+        )
+    )
+    all_statuses = [
+        {"value": "pending", "text": "Pending"},
+        {"value": "in_progress", "text": "In Progress"},
+        {"value": "completed", "text": "Completed"},
+        {"value": "on_hold", "text": "On Hold"},
+    ]
+
+    return render_template(
+        "pages/jobs/view-jobs-list.html",
+        jobs_list=jobs_list,
+        all_teams=all_teams,
+        all_statuses=all_statuses,
+        divisions_dict=divisions_dict,
+        widgets=widgets,
+        filters={
+            "q": search_query,
+            "status": status_filter,
+            "team": team_filter,
+            "deadline": deadline_filter,
+        },
+    )
 
 
 # Manage Jobs

@@ -5,72 +5,79 @@
 
   <div class="row mb-3">
     <div class="col-lg-12">
-      <form class="bg-light-subtle rounded border p-3">
-        <div class="row gap-3">
-          <div class="col">
-            <div class="row gap-3">
-              <div class="col-lg-4">
-                <div class="app-search">
-                  <input type="text" class="form-control" placeholder="Search project name..." />
-                  <i data-lucide="search" class="app-search-icon text-muted"></i>
-                </div>
+      <form class="bg-light-subtle rounded border p-3" method="GET" action="{{ url_for('jobs.view_jobs') }}">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+          <div class="d-flex flex-wrap align-items-center gap-3">
+            <!-- Search Input -->
+            <div class="app-search" style="min-width: 250px">
+              <input
+                type="text"
+                class="form-control"
+                name="q"
+                placeholder="Search job name..."
+                value="{{ filters.q or '' }}"
+              />
+              <i data-lucide="search" class="app-search-icon text-muted"></i>
+            </div>
+
+            <!-- Filters -->
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              <span class="me-2 fw-semibold">Filter By:</span>
+
+              <!-- Status Filter -->
+              <div class="app-search">
+                <select class="form-select form-control my-1 my-md-0" name="status">
+                  <option value="">All Statuses</option>
+                  {% for status in all_statuses %} {% if filters.status == status.value %}
+                  <option value="{{ status.value }}" selected>{{ status.text }}</option>
+                  {% else %}
+                  <option value="{{ status.value }}">{{ status.text }}</option>
+                  {% endif %} {% endfor %}
+                </select>
+                <i data-lucide="activity" class="app-search-icon text-muted"></i>
               </div>
-              <div class="col-auto">
-                <div class="d-flex flex-wrap align-items-center gap-2">
-                  <span class="me-2 fw-semibold">Filter By:</span>
 
-                  <!-- Status Filter -->
-                  <div class="app-search">
-                    <select class="form-select form-control my-1 my-md-0">
-                      <option selected>Status</option>
-                      <option value="On Track">On Track</option>
-                      <option value="Delayed">Delayed</option>
-                      <option value="At Risk">At Risk</option>
-                      <option value="Completed">Completed</option>
-                    </select>
-                    <i data-lucide="activity" class="app-search-icon text-muted"></i>
-                  </div>
-
-                  <!-- Team Filter -->
-                  <div class="app-search">
-                    <select class="form-select form-control my-1 my-md-0">
-                      <option selected>Team</option>
-                      <option value="Design">Design</option>
-                      <option value="Development">Development</option>
-                      <option value="Marketing">Marketing</option>
-                      <option value="QA">QA</option>
-                    </select>
-                    <i data-lucide="users" class="app-search-icon text-muted"></i>
-                  </div>
-
-                  <!-- Deadline Filter -->
-                  <div class="app-search">
-                    <select class="form-select form-control my-1 my-md-0">
-                      <option selected>Deadline</option>
-                      <option value="This Week">This Week</option>
-                      <option value="This Month">This Month</option>
-                      <option value="Next Month">Next Month</option>
-                      <option value="No Deadline">No Deadline</option>
-                    </select>
-                    <i data-lucide="calendar-clock" class="app-search-icon text-muted"></i>
-                  </div>
-
-                  <button type="submit" class="btn btn-secondary">Apply</button>
-                </div>
+              <!-- Team Filter -->
+              <div class="app-search">
+                <select class="form-select form-control my-1 my-md-0" name="team">
+                  <option value="">All Members</option>
+                  {% for user in all_teams %} {% if filters.team == user._id|string %}
+                  <option value="{{ user._id }}" selected>{{ user.name }}</option>
+                  {% else %}
+                  <option value="{{ user._id }}">{{ user.name }}</option>
+                  {% endif %} {% endfor %}
+                </select>
+                <i data-lucide="users" class="app-search-icon text-muted"></i>
               </div>
+
+              <!-- Deadline Filter -->
+              <div class="app-search">
+                <select class="form-select form-control my-1 my-md-0" name="deadline">
+                  <option value="">Any Deadline</option>
+                  {% set deadline_options = [('today', 'Today'), ('this_week', 'This Week'), ('this_month', 'This
+                  Month')] %} {% for value, text in deadline_options %} {% if filters.deadline == value %}
+                  <option value="{{ value }}" selected>{{ text }}</option>
+                  {% else %}
+                  <option value="{{ value }}">{{ text }}</option>
+                  {% endif %} {% endfor %}
+                </select>
+                <i data-lucide="calendar-clock" class="app-search-icon text-muted"></i>
+              </div>
+
+              <!-- Action Buttons -->
+              <button type="submit" class="btn btn-primary">Apply</button>
+              <a href="{{ url_for('jobs.view_jobs') }}" class="btn btn-light">Reset</a>
             </div>
           </div>
 
           <!-- Layout toggle (grid/list) -->
-          <div class="col-auto">
-            <div class="d-flex gap-1">
-              <a href="/projects" class="btn btn-primary btn-icon">
-                <i data-lucide="layout-grid" class="fs-lg"></i>
-              </a>
-              <a href="/projects-list" class="btn btn-soft-primary btn-icon">
-                <i data-lucide="list" class="fs-lg"></i>
-              </a>
-            </div>
+          <div class="d-flex gap-1">
+            <a href="{{ url_for('jobs.view_jobs') }}" class="btn btn-primary btn-icon">
+              <i data-lucide="layout-grid" class="fs-lg"></i>
+            </a>
+            <a href="{{ url_for('jobs.view_jobs_list') }}" class="btn btn-soft-primary btn-icon">
+              <i data-lucide="list" class="fs-lg"></i>
+            </a>
           </div>
         </div>
       </form>
@@ -78,21 +85,26 @@
   </div>
 
   <div class="row">
+    {% for job in jobs %}
     <div class="col-md-6 col-xxl-3">
       <div class="card">
         <div class="card-body">
           <div class="d-flex mb-4">
             <div class="avatar-xl me-3">
-              <span class="avatar-title text-bg-light rounded">
-                <i class="ti ti-code-dots fs-24 text-success"></i>
+              <span class="avatar-title rounded" style="background-color: {{ job.job_color or '#f1f5f7' }}">
+                <i class="ti ti-code-dots fs-24" style="color: #fff; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2)"></i>
               </span>
             </div>
             <div>
               <h5 class="mb-1 d-flex align-items-center">
-                <a href="/project-details" class="link-reset">AI Analytics Dashboard</a>
+                <a href="{{ url_for('jobs.job_details', job_id=job._id) }}" class="link-reset">{{ job.job_name }}</a>
               </h5>
-              <p class="text-muted mb-2 fs-xxs">Updated 5 minutes ago</p>
-              <span class="badge badge-soft-success fs-xxs badge-label">In Progress</span>
+              <p class="text-muted mb-2 fs-xxs">Created: {{ job.created_at.strftime('%d %b, %Y') }}</p>
+              {% set status_map = { 'pending': {'class': 'badge-soft-warning', 'text': 'Pending'}, 'in_progress':
+              {'class': 'badge-soft-info', 'text': 'In Progress'}, 'completed': {'class': 'badge-soft-success', 'text':
+              'Completed'}, 'on_hold': {'class': 'badge-soft-secondary', 'text': 'On Hold'} } %} {% set job_status =
+              status_map.get(job.status, {'class': 'badge-soft-dark', 'text': job.status|capitalize}) %}
+              <span class="badge {{ job_status.class }} fs-xxs badge-label">{{ job_status.text }}</span>
             </div>
             <div class="ms-auto">
               <div class="dropdown">
@@ -100,6 +112,12 @@
                   <i class="ti ti-dots-vertical fs-xl"></i>
                 </a>
                 <ul class="dropdown-menu dropdown-menu-end">
+                  <li>
+                    <a class="dropdown-item" href="{{ url_for('jobs.job_details', job_id=job._id) }}">
+                      <i class="ti ti-eye me-2"></i>
+                      View Details
+                    </a>
+                  </li>
                   <li>
                     <a class="dropdown-item" href="#">
                       <i class="ti ti-share me-2"></i>
@@ -112,12 +130,7 @@
                       Edit
                     </a>
                   </li>
-                  <li>
-                    <a class="dropdown-item" href="#">
-                      <i class="ti ti-ban me-2"></i>
-                      Block
-                    </a>
-                  </li>
+                  <li><hr class="dropdown-divider" /></li>
                   <li>
                     <a class="dropdown-item text-danger" href="#">
                       <i class="ti ti-trash me-2"></i>
@@ -129,20 +142,18 @@
             </div>
           </div>
 
+          {# --- Stats Section --- #}
           <div class="row">
             <div class="col-sm-6">
               <div class="d-flex align-items-center gap-2 mb-3">
                 <i class="ti ti-list-check text-muted fs-lg"></i>
-                <h5 class="fs-base mb-0 fw-medium">
-                  18/60
-                  <span class="badge bg-secondary">+4 New</span>
-                </h5>
+                <h5 class="fs-base mb-0 fw-medium">0/0</h5>
               </div>
             </div>
             <div class="col-sm-6">
               <div class="d-flex align-items-center gap-2 mb-3">
                 <i class="ti ti-paperclip text-muted fs-lg"></i>
-                <h5 class="fs-base mb-0 fw-medium">15 Files</h5>
+                <h5 class="fs-base mb-0 fw-medium">{{ job.files_count }} Files</h5>
               </div>
             </div>
           </div>
@@ -151,67 +162,118 @@
             <div class="col-sm-6">
               <div class="d-flex align-items-center gap-2 mb-3">
                 <i class="ti ti-message-2 text-muted fs-lg"></i>
-                <h5 class="fs-base mb-0 fw-medium">5 Comments</h5>
+                <h5 class="fs-base mb-0 fw-medium">{{ job.comments_count }} Comments</h5>
               </div>
             </div>
             <div class="col-sm-6">
               <div class="d-flex align-items-center gap-2 mb-3">
                 <i class="ti ti-calendar-time text-muted fs-lg"></i>
-                <h5 class="fs-base mb-0 fw-medium">10 Jun, 2025</h5>
+                <h5 class="fs-base mb-0 fw-medium">{{ job.completion_time.strftime('%d %b, %Y') }}</h5>
               </div>
             </div>
           </div>
 
-          <p class="my-2 text-muted fw-semibold fs-xxs">Team Members:</p>
-          <div class="avatar-group avatar-group-xs mb-3">
-            <div class="avatar">
-              <img src="{{ config.ASSETS_ROOT }}/images/users/user-2.jpg" alt="" class="rounded-circle avatar-xs" />
+          <div class="row my-0">
+            <div class="col-6">
+              <p class="my-1 text-muted fw-semibold fs-xxs">Divisions:</p>
+              <div class="d-flex flex-wrap gap-1 mb-2">
+                {% for division in job.divisions_list %}
+                <span class="badge badge-soft-info">{{ division.name }}</span>
+                {% else %}
+                <span class="text-muted fs-xs">No divisions assigned.</span>
+                {% endfor %}
+              </div>
             </div>
-            <div class="avatar">
-              <img src="{{ config.ASSETS_ROOT }}/images/users/user-3.jpg" alt="" class="rounded-circle avatar-xs" />
-            </div>
-            <div class="avatar">
-              <img src="{{ config.ASSETS_ROOT }}/images/users/user-5.jpg" alt="" class="rounded-circle avatar-xs" />
-            </div>
-            <div class="avatar">
-              <img src="{{ config.ASSETS_ROOT }}/images/users/user-1.jpg" alt="" class="rounded-circle avatar-xs" />
+            <div class="col-6">
+              <p class="my-1 text-muted fw-semibold fs-xxs">Tags:</p>
+              <div class="d-flex flex-wrap gap-1 mb-3">
+                {% for tag in job.tags %}
+                <span class="badge badge-soft-secondary">{{ tag }}</span>
+                {% else %}
+                <span class="text-muted fs-xs">No tags assigned.</span>
+                {% endfor %}
+              </div>
             </div>
           </div>
 
+          <p class="my-1 text-muted fw-semibold fs-xxs">Team Members:</p>
+          <div class="avatar-group avatar-group-xs mb-3">
+            {% for coordinator in job.coordinators_list %}
+            <div class="avatar">
+              <img
+                src="{{ coordinator.avatar_url or url_for('static', filename='images/users/user-10.jpg') }}"
+                alt="{{ coordinator.name }}"
+                class="rounded-circle avatar-xs"
+                title="{{ coordinator.name }}"
+              />
+            </div>
+            {% else %}
+            <span class="text-muted fs-xs">No team members assigned.</span>
+            {% endfor %}
+          </div>
+
+          {# --- Progress Bar Section --- #}
           <div class="mt-3">
             <div class="d-flex align-items-center justify-content-between mb-2">
               <p class="mb-0 text-muted fw-semibold fs-xxs">Progress</p>
-              <p class="fw-semibold mb-0">65%</p>
+              <p class="fw-semibold mb-0">0%</p>
             </div>
             <div class="progress" style="height: 5px">
-              <div class="progress-bar bg-success" style="width: 65%"></div>
+              <div class="progress-bar bg-success" style="width: 0%"></div>
             </div>
           </div>
         </div>
       </div>
     </div>
-    <!-- end col -->
-    <!-- end col -->
+    {% else %}
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body text-center py-5">
+          <h4 class="text-muted">No Jobs Found</h4>
+          <p class="text-muted mb-0">Create a new job to get started.</p>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
   </div>
   <!-- end row-->
 
+  {# --- Pagination --- #} {% if total_pages > 1 %}
   <ul class="pagination pagination-rounded pagination-boxed justify-content-center">
-    <li class="page-item">
-      <a class="page-link" href="javascript: void(0);" aria-label="Previous">
+    {# Previous Page Link #}
+    <li class="page-item {% if page == 1 %}disabled{% endif %}">
+      <a class="page-link" href="{{ url_for('jobs.view_jobs', page=page-1, **filters) }}" aria-label="Previous">
         <span aria-hidden="true">«</span>
       </a>
     </li>
-    <li class="page-item active"><a class="page-link" href="javascript: void(0);">1</a></li>
-    <li class="page-item"><a class="page-link" href="javascript: void(0);">2</a></li>
-    <li class="page-item"><a class="page-link" href="javascript: void(0);">3</a></li>
-    <li class="page-item"><a class="page-link" href="javascript: void(0);">4</a></li>
-    <li class="page-item"><a class="page-link" href="javascript: void(0);">5</a></li>
-    <li class="page-item">
-      <a class="page-link" href="javascript: void(0);" aria-label="Next">
+
+    {# --- Dynamic Page Number Links --- #} {% set window = 2 %} {% set show_ellipsis_start = page > window + 2 %} {%
+    set show_ellipsis_end = page < total_pages - (window + 1) %} {# First page #}
+    <li class="page-item {% if 1 == page %}active{% endif %}">
+      <a class="page-link" href="{{ url_for('jobs.view_jobs', page=1, **filters) }}">1</a>
+    </li>
+
+    {# Start ellipsis #} {% if show_ellipsis_start %}
+    <li class="page-item disabled"><span class="page-link">...</span></li>
+    {% endif %} {# Pages around current page #} {% for p in range(1, total_pages + 1) %} {% if p > 1 and p < total_pages
+    and p >= page - window and p <= page + window %}
+    <li class="page-item {% if p == page %}active{% endif %}">
+      <a class="page-link" href="{{ url_for('jobs.view_jobs', page=p, **filters) }}">{{ p }}</a>
+    </li>
+    {% endif %} {% endfor %} {# End ellipsis #} {% if show_ellipsis_end %}
+    <li class="page-item disabled"><span class="page-link">...</span></li>
+    {% endif %} {# Last page #} {% if total_pages > 1 %}
+    <li class="page-item {% if total_pages == page %}active{% endif %}">
+      <a class="page-link" href="{{ url_for('jobs.view_jobs', page=total_pages, **filters) }}">{{ total_pages }}</a>
+    </li>
+    {% endif %} {# Next Page Link #}
+    <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+      <a class="page-link" href="{{ url_for('jobs.view_jobs', page=page+1, **filters) }}" aria-label="Next">
         <span aria-hidden="true">»</span>
       </a>
     </li>
   </ul>
+  {% endif %}
 </div>
 <!-- container -->
 
