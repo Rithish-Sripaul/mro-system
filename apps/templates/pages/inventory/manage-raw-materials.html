@@ -346,6 +346,7 @@
                 <th data-table-sort="sku">SKU</th>
                 <th data-table-sort="uom" data-column="uom">UoM</th>
                 <th data-table-sort="current_quantity" data-column="stock_level">Current Qty</th>
+                <th data-table-sort="in_use_quantity">In Use Qty</th>
                 <th data-table-sort="reorder_level">Reorder Level</th>
                 <th data-table-sort data-column="categories">Categories</th>
                 <th data-table-sort data-column="suppliers">Suppliers</th>
@@ -412,6 +413,16 @@
                   <span class="badge badge-soft-warning fs-sm">{{ material.current_quantity }} {{ material.uom }}</span>
                   {% else %}
                   <span class="badge badge-soft-success fs-sm">{{ material.current_quantity }} {{ material.uom }}</span>
+                  {% endif %}
+                </td>
+
+                {# IN USE QUANTITY #}
+                <td data-sort="{{ material.in_use_quantity | sum(attribute='required_quantity') }}">
+                  {% set in_use_total = material.in_use_quantity | sum(attribute='required_quantity') %} {% if
+                  in_use_total > 0 %}
+                  <span class="badge badge-soft-info fs-sm">{{ in_use_total }} {{ material.uom }}</span>
+                  {% else %}
+                  <span class="text-muted fs-sm">0 {{ material.uom }}</span>
                   {% endif %}
                 </td>
 

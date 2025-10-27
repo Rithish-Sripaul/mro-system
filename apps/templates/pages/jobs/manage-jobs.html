@@ -316,7 +316,9 @@
                   <div class="d-flex">
                     <div>
                       <h5 class="mb-1">
-                        <a href="/ecommerce-product-details" class="link-reset">{{ job.job_name }}</a>
+                        <a href="{{ url_for('jobs.job_details', job_id=job._id) }}" class="link-reset">
+                          {{ job.job_name }}
+                        </a>
                       </h5>
                     </div>
                   </div>
@@ -382,7 +384,9 @@
                   <div class="d-flex">
                     <div>
                       <h5 class="mb-1">
-                        <a href="/ecommerce-product-details" class="link-reset fw-normal">{{ job.job_name }}</a>
+                        <a href="{{ url_for('jobs.job_details', job_id=job._id) }}" class="link-reset fw-normal">
+                          {{ job.job_name }}
+                        </a>
                       </h5>
                     </div>
                   </div>
@@ -558,7 +562,13 @@
                   <a href="#" class="badge division-badge me-2 px-2">{{ divisions_dict[division_id] }}</a>
                   {% endfor %}
                 </td>
-                <td>Electronics</td>
+                <td>
+                  {% for tag in job.tags %}
+                  <span class="badge badge-soft-info me-1 fs-xxs">{{ tag }}</span>
+                  {% else %}
+                  <span class="text-muted fs-xxs">No tags</span>
+                  {% endfor %}
+                </td>
                 <td>
                   <h5 class="fs-base mb-0 fw-medium">10 / 12</h5>
                 </td>
@@ -619,6 +629,83 @@
 {% endblock page_content %} {% block extra_javascript %}
 <script></script>
 {# DROPZONE #}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    // Initialize Choices.js for select elements
+    new Choices("#divisions-multiple-remove-button", {
+      removeItemButton: true,
+      searchEnabled: true,
+      allowHTML: true,
+    });
+    new Choices("#coordinators-multiple-remove-button", {
+      removeItemButton: true,
+      searchEnabled: true,
+      allowHTML: true,
+    });
+    new Choices("#schedule_type", {
+      searchEnabled: false,
+      allowHTML: true,
+    });
+
+    // Initialize Tagify for tags input
+    var input = document.getElementById("basicTagify");
+    if (input) {
+      new Tagify(input, {
+        whitelist: [], // You can populate this dynamically if needed
+        maxTags: 10,
+        dropdown: {
+          maxItems: 20,
+          classname: "tags-look", // custom class for the dropdown
+          enabled: 0, // show dropdown immediately on focus
+          closeOnSelect: false, // keep dropdown open after selecting a tag
+        },
+      });
+    }
+
+    // Form validation for Quill editor and overall form
+    var createJobForm = document.getElementById("createJobForm");
+    createJobForm.addEventListener(
+      "submit",
+      function (event) {
+        var descriptionInput = document.getElementById("description");
+        var quillEditorDiv = document.getElementById("quill-editor");
+        var quillInstance = quillEditorDiv.__quill; // Get instance from the element
+
+        // Always clear custom validity first
+        descriptionInput.setCustomValidity("");
+
+        if (quillInstance) {
+          // Update hidden input for Quill before validation
+          descriptionInput.value = quillInstance.root.innerHTML;
+
+          // Custom validation for Quill editor
+          // Check if the editor content is empty (after stripping HTML tags and trimming whitespace)
+          const textContent = quillInstance.getText().trim();
+          const htmlContent = quillInstance.root.innerHTML.trim();
+
+          // Quill's getText() might return a newline even if empty, so check HTML too
+          if (textContent === "" || htmlContent === "<p><br></p>") {
+            descriptionInput.setCustomValidity("Please provide a job description.");
+          }
+        } else {
+          // Fallback if Quill instance isn't found (shouldn't happen if form-quilljs.js loads)
+          if (descriptionInput.value.trim() === "") {
+            descriptionInput.setCustomValidity("Please provide a job description.");
+          }
+        }
+
+        // Now check overall form validity
+        if (!createJobForm.checkValidity()) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+
+        createJobForm.classList.add("was-validated");
+      },
+      false
+    );
+  });
+</script>
 <script src="{{ config.ASSETS_ROOT }}/plugins/dropzone/dropzone-min.js"></script>
 
 {# PLUGINS #}
@@ -630,9 +717,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@yaireo/dragsort@1.3.2/dist/dragsort.min.js"></script>
 <script src="{{ config.ASSETS_ROOT }}/plugins/quill/quill.js"></script>
 <script src="{{ config.ASSETS_ROOT }}/plugins/pickr/pickr.min.js"></script>
-{# CUSTOM JS #}
-<script src="{{ config.ASSETS_ROOT }}/js/pages/form-quilljs.js"></script>
+{# CUSTOM JS #} {#
 <script src="{{ config.ASSETS_ROOT }}/js/pages/manage-jobs.js"></script>
+#}
 <script src="{{ config.ASSETS_ROOT }}/js/pages/custom-table.js"></script>
 <script src="{{ config.ASSETS_ROOT }}/js/pages/form-colorpickr.js"></script>
 

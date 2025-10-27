@@ -388,6 +388,7 @@ def job_details(job_id):
     jobs_collection = db["jobs"]
     users_collection = db["users"]
     divisions_collection = db["divisions"]
+    operations_collection = db["operations"]  # NEW: Operations collection
 
     divisions_dict = {
         div["_id"]: div["name"]
@@ -396,12 +397,306 @@ def job_details(job_id):
 
     job = jobs_collection.find_one({"_id": ObjectId(job_id)})
 
+    if not job:
+        flash("Job not found.", "error")
+        return redirect(
+            url_for("jobs.view_jobs")
+        )  # Redirect to a list view if job not found
+
+    # Fetch operations for this job
+    operations = list(
+        operations_collection.find({"job_id": ObjectId(job_id)}).sort(
+            "operation_position", 1
+        )
+    )
+
+    # Enrich operations with machine and operator names
+    machine_ids = [
+        op.get("assigned_machine") for op in operations if op.get("assigned_machine")
+    ]
+    operator_ids = []
+    for op in operations:
+        operator_ids.extend(
+            [
+                ObjectId(oid)
+                for oid in op.get("assigned_operators", [])
+                if ObjectId.is_valid(oid)
+            ]
+        )
+
+    machines_map = {
+        str(m["_id"]): m["machine_name"]
+        for m in db.machines.find({"_id": {"$in": machine_ids}}, {"machine_name": 1})
+    }
+    operators_map = {
+        str(u["_id"]): u["name"]
+        for u in db.users.find({"_id": {"$in": operator_ids}}, {"name": 1})
+    }
+
+    for op in operations:
+        op["machine_name"] = machines_map.get(str(op.get("assigned_machine")), "N/A")
+        op["operator_names"] = [
+            operators_map.get(str(oid), "Unknown")
+            for oid in op.get("assigned_operators", [])
+        ]
+        # Format estimated time for display
+        if op.get("estimated_time"):
+            op["estimated_time_display"] = (
+                f"{op['estimated_time']} hours"  # Assuming hours for now
+            )
+        else:
+            op["estimated_time_display"] = "N/A"
+
+        op["_id"] = str(op["_id"])
     return render_template(
-        "pages/jobs/job-details.html", job=job, divisions_dict=divisions_dict
+        "pages/jobs/job-details.html",
+        job=job,
+        divisions_dict=divisions_dict,
+        operations=operations,  # Pass operations to the template
     )
 
 
+@blueprint.route("/operations/<string:operation_id>/delete", methods=["POST"])
+@login_required
+def delete_operation(operation_id):
+    """Safely deletes an operation and reverts inventory changes."""
+    db = get_db()
+    operations_collection = db.operations
+    raw_materials_collection = db.raw_materials
+
+    try:
+        op_id = ObjectId(operation_id)
+    except Exception:
+        flash("Invalid operation ID.", "error")
+        return redirect(request.referrer or url_for("jobs.view_jobs"))
+
+    # Find the operation to be deleted
+    operation = operations_collection.find_one({"_id": op_id})
+    if not operation:
+        flash("Operation not found.", "error")
+        return redirect(request.referrer or url_for("jobs.view_jobs"))
+
+    job_id = str(operation["job_id"])
+
+    # Revert inventory changes
+    if operation.get("materials_required"):
+        for item in operation["materials_required"]:
+            material_id = item["material_id"]
+            quantity_to_return = item["quantity"]
+
+            # Add the quantity back to current_quantity and remove the in_use_quantity entry
+            raw_materials_collection.update_one(
+                {"_id": material_id},
+                {
+                    "$inc": {"current_quantity": quantity_to_return},
+                    "$pull": {"in_use_quantity": {"operation_id": op_id}},
+                },
+            )
+
+    # Delete the operation
+    operations_collection.delete_one({"_id": op_id})
+    flash(f"Operation '{operation['operation_name']}' has been deleted.", "success")
+    return redirect(url_for("jobs.job_details", job_id=job_id))
+
+
 from bson import json_util
+
+
+def get_material_stock_status(db, material_id):
+    """Helper to get current stock and check for deficit."""
+    material = db.raw_materials.find_one({"_id": material_id})
+    if not material:
+        return 0, True  # Assume 0 stock and deficit if material not found
+
+    current_quantity = material.get("current_quantity", 0)
+    deficit = current_quantity < 0
+    return current_quantity, deficit
+
+
+# NEW: Route for creating operations
+@blueprint.route("/<string:job_id>/operations/create", methods=["GET", "POST"])
+@login_required
+def create_operation(job_id):
+    db = get_db()
+    jobs_collection = db["jobs"]
+    users_collection = db["users"]
+    machines_collection = db["machines"]
+    raw_materials_collection = db["raw_materials"]
+    operations_collection = db["operations"]
+
+    # Check if the job exists
+    job = jobs_collection.find_one({"_id": ObjectId(job_id)})
+    if not job:
+        flash("Job not found.", "error")
+        return redirect(url_for("jobs.view_jobs"))
+
+    if request.method == "POST":
+        operation_name = request.form.get("operation_name")
+        description = request.form.get("description")
+        estimated_time = float(request.form.get("estimated_time", 0))
+        assigned_operators_str = request.form.getlist(
+            "assigned_operators"
+        )  # List of user IDs (strings)
+        assigned_machine_id = request.form.get(
+            "assigned_machine"
+        )  # Single machine ID (string)
+        materials_data_json = request.form.get(
+            "materials_data"
+        )  # JSON string from dynamic form
+
+        if not operation_name or not description or not estimated_time:
+            flash(
+                "Operation Name, Description, and Estimated Time are required.", "error"
+            )
+            return redirect(url_for("jobs.create_operation", job_id=job_id))
+
+        # Convert operator IDs to ObjectId
+        assigned_operators = [
+            ObjectId(oid) for oid in assigned_operators_str if ObjectId.is_valid(oid)
+        ]
+
+        # Convert machine ID to ObjectId
+        assigned_machine = (
+            ObjectId(assigned_machine_id)
+            if assigned_machine_id and ObjectId.is_valid(assigned_machine_id)
+            else None
+        )
+
+        # Parse materials data
+        materials_required = []
+        if materials_data_json:
+            try:
+                materials_data = json.loads(materials_data_json)
+                for item in materials_data:
+                    if item.get("material_id") and item.get("quantity"):
+                        materials_required.append(
+                            {
+                                "material_id": ObjectId(item["material_id"]),
+                                "quantity": float(item["quantity"]),
+                                "uom": item.get("uom"),
+                            }
+                        )
+            except json.JSONDecodeError:
+                flash("Invalid materials data format.", "error")
+                return redirect(url_for("jobs.create_operation", job_id=job_id))
+
+        # --- Check for sufficient stock and determine status ---
+        has_sufficient_stock = True
+        for item in materials_required:
+            material = raw_materials_collection.find_one({"_id": item["material_id"]})
+            if not material or material.get("current_quantity", 0) < item["quantity"]:
+                has_sufficient_stock = False
+                break
+
+        operation_status = "pending"
+        if not has_sufficient_stock:
+            operation_status = "suspended"
+            # Update the parent job's status to "At Risk"
+            jobs_collection.update_one(
+                {"_id": ObjectId(job_id)}, {"$set": {"status": "at_risk"}}
+            )
+
+        # Determine the next operation_position for this job
+        last_operation_list = list(
+            operations_collection.find({"job_id": ObjectId(job_id)})
+            .sort("operation_position", -1)
+            .limit(1)
+        )
+        next_position = 1
+        if last_operation_list:
+            next_position = last_operation_list[0]["operation_position"] + 1
+
+        new_operation = {
+            "job_id": ObjectId(job_id),
+            "operation_name": operation_name,
+            "description": description,
+            "operation_position": next_position,
+            "estimated_time": estimated_time,
+            "assigned_operators": assigned_operators,
+            "assigned_machine": assigned_machine,
+            "materials_required": materials_required,
+            "status": operation_status,
+            "created_at": datetime.datetime.now(),
+            "updated_at": datetime.datetime.now(),
+        }
+
+        result = operations_collection.insert_one(new_operation)
+        new_operation_id = result.inserted_id
+
+        # --- Update raw material quantities and track usage ---
+        for item in materials_required:
+            raw_materials_collection.update_one(
+                {"_id": item["material_id"]},
+                {
+                    "$inc": {"current_quantity": -item["quantity"]},
+                    "$push": {
+                        "in_use_quantity": {
+                            "job_id": ObjectId(job_id),
+                            "operation_id": new_operation_id,
+                            "required_quantity": item["quantity"],
+                        }
+                    },
+                },
+            )
+
+        flash(
+            f"Operation '{operation_name}' created successfully for Job '{job['job_name']}'.",
+            "success",
+        )
+        return redirect(url_for("jobs.job_details", job_id=job_id))
+
+    # --- Find currently busy resources (machines and operators) ---
+    # Find all operations that are not yet completed
+    active_operations = list(
+        operations_collection.find(
+            {"status": {"$ne": "completed"}},
+            {"assigned_machine": 1, "assigned_operators": 1},
+        )
+    )
+
+    # Create sets of busy resource IDs for quick lookups
+    busy_machine_ids = {
+        str(op["assigned_machine"])
+        for op in active_operations
+        if op.get("assigned_machine")
+    }
+    busy_operator_ids = {
+        str(op_id)
+        for op in active_operations
+        if "assigned_operators" in op
+        for op_id in op["assigned_operators"]
+    }
+
+    # GET request: Prepare data for the form
+    all_users = list(users_collection.find({}, {"_id": 1, "name": 1}).sort("name", 1))
+    all_machines = list(
+        machines_collection.find({}, {"_id": 1, "machine_name": 1}).sort(
+            "machine_name", 1
+        )
+    )
+    all_raw_materials = list(
+        raw_materials_collection.find(
+            {},
+            {"_id": 1, "material_name": 1, "uom": 1, "sku": 1, "current_quantity": 1},
+        ).sort("material_name", 1)
+    )
+
+    # Convert ObjectIds to strings for JSON serialization in the template
+    for material in all_raw_materials:
+        material["_id"] = str(material["_id"])
+
+    return render_template(
+        "pages/jobs/create-operation.html",
+        job=job,
+        all_users=all_users,
+        all_machines=all_machines,
+        all_raw_materials_json=json.dumps(
+            all_raw_materials
+        ),  # Pass as JSON string for JS
+        all_raw_materials=all_raw_materials,  # Pass as list for initial select options
+        busy_machine_ids=busy_machine_ids,
+        busy_operator_ids=busy_operator_ids,
+    )
 
 
 def build_comment_tree(comments):

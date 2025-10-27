@@ -1,0 +1,364 @@
+{% extends 'layouts/vertical.html' %} {% block title %}Create Operation{% endblock title %} {% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet" />
+<link href="{{ config.ASSETS_ROOT }}/plugins/quill/quill.core.css" rel="stylesheet" type="text/css" />
+<link href="{{ config.ASSETS_ROOT }}/plugins/quill/quill.snow.css" rel="stylesheet" type="text/css" />
+<style>
+  /* Tom Select integration styles */
+  .ts-dropdown {
+    z-index: 1060 !important;
+    background-color: #fff !important; /* Force a solid white background */
+    border: 1px solid #dee2e6 !important; /* A standard light gray border */
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important; /* Add a shadow for depth */
+  }
+
+  .ts-control {
+    padding: 0.4375rem 0.875rem; /* Match .form-control padding */
+    border: 1px solid #dee2e6 !important; /* A standard light gray border */
+  }
+
+  .ts-dropdown .option:hover,
+  .ts-dropdown .option.active {
+    background-color: #f8f9fa !important; /* A standard light hover color */
+    color: #212529 !important; /* Standard dark text color for readability */
+  }
+
+  .is-invalid .ts-control {
+    border-color: #f1556c;
+  }
+  .was-validated #quill-editor:has(+ #description:invalid) .ql-container {
+    border-color: #f1556c !important; /* Bootstrap's danger color */
+  }
+</style>
+{% endblock extra_css %} {% block page_content %}
+<div class="container-fluid">
+  {% set title='Create Operation' %} {% set subtitle='Jobs' %} {% include 'partials/page-title.html' %}
+
+  <div class="row justify-content-start">
+    <div class="col-xxl-7">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="card-title">
+            Create New Operation for Job:
+            <a href="{{ url_for('jobs.job_details', job_id=job._id) }}">{{ job.job_name }}</a>
+          </h4>
+        </div>
+        <div class="card-body">
+          <form
+            id="createOperationForm"
+            method="POST"
+            action="{{ url_for('jobs.create_operation', job_id=job._id) }}"
+            novalidate
+          >
+            <!-- Operation Info -->
+            <div class="row">
+              {# OPERATION NAME #}
+              <div class="col-xl-12">
+                <div class="mb-3">
+                  <label class="form-label" for="operation_name">Operation Name</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="operation_name"
+                    placeholder="Enter the operation name"
+                    name="operation_name"
+                    required
+                  />
+                  <div class="invalid-feedback">Please provide an Operation Name.</div>
+                </div>
+              </div>
+
+              {# DESCRIPTION #}
+              <div class="col-xl-12">
+                <div class="mb-3">
+                  <label class="form-label" for="description">Description</label>
+                  <div id="quill-editor" class="quill-editor-required" style="height: 200px"></div>
+                  <input type="hidden" name="description" id="description" required />
+                  <div class="invalid-feedback">Please provide an operation description.</div>
+                </div>
+              </div>
+
+              {# ESTIMATED TIME #}
+              <div class="col-xl-6">
+                <div class="mb-3">
+                  <label class="form-label" for="estimated_time">Estimated Time (Hours)</label>
+                  <input
+                    type="number"
+                    class="form-control"
+                    id="estimated_time"
+                    name="estimated_time"
+                    min="0.1"
+                    step="0.1"
+                    placeholder="e.g., 2.5"
+                    required
+                  />
+                  <div class="invalid-feedback">Please provide a valid estimated time.</div>
+                </div>
+              </div>
+
+              {# ASSIGNED MACHINE #}
+              <div class="col-xl-6">
+                <div class="mb-3">
+                  <label class="form-label" for="assigned_machine">Assigned Machine</label>
+                  <select id="assigned_machine" name="assigned_machine" required>
+                    <option value="">Select Machine</option>
+                    {% for machine in all_machines %} {% set is_busy = machine._id|string in busy_machine_ids %}
+                    <option value="{{ machine._id }}" {% if is_busy %}disabled{% endif %}>
+                      {{ machine.machine_name }} {% if machine._id|string in busy_machine_ids %}(In Use){% endif %}
+                    </option>
+                    {% endfor %}
+                  </select>
+                  <div class="invalid-feedback">Please select an assigned machine.</div>
+                </div>
+              </div>
+
+              {# ASSIGNED OPERATORS #}
+              <div class="col-xl-12">
+                <div class="mb-3">
+                  <label class="form-label" for="assigned_operators">Assigned Operators</label>
+                  <select id="assigned_operators" name="assigned_operators" multiple required>
+                    {% for user in all_users %} {% set is_busy = user._id|string in busy_operator_ids %}
+                    <option value="{{ user._id }}" {% if is_busy %}disabled{% endif %}>
+                      {{ user.name }} {% if user._id|string in busy_operator_ids %}(In Use){% endif %}
+                    </option>
+                    {% endfor %}
+                  </select>
+                  <div class="invalid-feedback">Please select at least one operator.</div>
+                </div>
+              </div>
+
+              {# RAW MATERIALS REQUIRED #}
+              <div class="col-xl-12 mt-3">
+                <h5 class="mb-3">Raw Materials Required</h5>
+                <div id="materials-container">
+                  <!-- Dynamic material rows will be added here -->
+                </div>
+                <button type="button" id="add-material-row" class="btn btn-sm btn-soft-primary mt-2">
+                  <i class="ti ti-plus me-1"></i>
+                  Add Material
+                </button>
+                <input type="hidden" name="materials_data" id="materials_data" value="[]" />
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-end mt-4">
+              <button type="submit" class="btn btn-primary">Create Operation</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="col-xxl-5">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="card-title">Available Inventory</h4>
+        </div>
+        <div class="card-body">
+          <p class="text-muted mb-3">Displays the current quantity on hand for the selected raw materials.</p>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered table-nowrap mb-0">
+              <thead class="bg-light align-middle bg-opacity-25 thead-sm">
+                <tr class="text-uppercase fs-xxs">
+                  <th>Material (SKU)</th>
+                  <th class="text-end">On Hand</th>
+                </tr>
+              </thead>
+              <tbody id="current-stock-info-body">
+                {# Stock info rows will be dynamically added here #}
+                <tr>
+                  <td colspan="2" class="text-center text-muted">No materials selected.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock page_content %} {% block extra_javascript %}
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/plugins/quill/quill.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/js/pages/form-quilljs.js"></script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Tom Select for static select elements
+    new TomSelect('#assigned_machine', { dropdownParent: 'body' });
+    new TomSelect('#assigned_operators', {
+      plugins: ['remove_button'],
+      dropdownParent: 'body',
+    });
+
+    // Form validation for Quill editor
+    var createOperationForm = document.getElementById('createOperationForm');
+    createOperationForm.addEventListener('submit', function(event) {
+      // Update hidden input for Quill before validation
+      document.getElementById('description').value = quill.root.innerHTML;
+
+      // Custom validation for Quill editor
+      var descriptionInput = document.getElementById('description');
+      var quillEditorDiv = document.getElementById('quill-editor');
+      var quillInstance = quillEditorDiv.__quill; // Get instance from the element
+      if (quillInstance) {
+        descriptionInput.value = quillInstance.root.innerHTML;
+
+        // Custom validation for Quill editor
+        if (quillInstance.getText().trim() === '') {
+          descriptionInput.setCustomValidity('Please provide an operation description.');
+        }
+      }
+      if (!createOperationForm.checkValidity()) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+
+
+
+      createOperationForm.classList.add('was-validated');
+    }, false);
+
+    // --- Dynamic Raw Materials Section ---
+    var materialsContainer = document.getElementById('materials-container');
+    var addMaterialRowBtn = document.getElementById('add-material-row');
+    var materialsDataInput = document.getElementById('materials_data');
+    var allRawMaterials = {{ all_raw_materials_json | safe }}; // Raw materials from Flask
+    const currentStockInfoBody = document.getElementById('current-stock-info-body');
+
+    let materialRowCounter = 0;
+
+    function addMaterialRow(material = null) {
+      materialRowCounter++;
+      var rowId = `material-row-${materialRowCounter}`;
+
+      var newRow = document.createElement('div');
+      newRow.className = 'row g-2 mb-2 align-items-end';
+      newRow.id = rowId;
+      newRow.innerHTML = `
+        <div class="col-md-6">
+          <label class="form-label visually-hidden" for="material-select-${materialRowCounter}">Material</label>
+          <select class="form-select material-select" id="material-select-${materialRowCounter}" required>
+            <option value="">Search material...</option>
+            ${allRawMaterials.map(mat => `<option value="${mat._id}" data-uom="${mat.uom}">${mat.material_name} (${mat.sku})</option>`).join('')}
+          </select>
+          <div class="invalid-feedback">Please select a material.</div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label visually-hidden" for="quantity-input-${materialRowCounter}">Quantity</label>
+          <input type="number" class="form-control quantity-input" id="quantity-input-${materialRowCounter}" min="0.01" step="0.01" placeholder="Quantity" required>
+          <div class="invalid-feedback">Please enter a valid quantity.</div>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label visually-hidden" for="uom-display-${materialRowCounter}">UoM</label>
+          <input type="text" class="form-control uom-display" id="uom-display-${materialRowCounter}" placeholder="UoM" readonly>
+        </div>
+        <div class="col-md-1">
+          <button type="button" class="btn btn-danger btn-icon remove-material-row" data-row-id="${rowId}">
+            <i class="ti ti-trash"></i>
+          </button>
+        </div>
+      `;
+      materialsContainer.appendChild(newRow);
+
+      // Initialize Tom Select for the new select element
+      var tomSelect = new TomSelect(newRow.querySelector('.material-select'), {
+        dropdownParent: 'body',
+      });
+
+
+      // Set initial values if editing
+      if (material) {
+        newMaterialSelect.setChoiceByValue(material.material_id);
+        newRow.querySelector('.quantity-input').value = material.quantity;
+        newRow.querySelector('.uom-display').value = material.uom;
+      }
+
+      // Event listener for material selection change to update UoM
+      tomSelect.on('change', function(value) {
+        var selectedOption = value;
+        var uomInput = newRow.querySelector('.uom-display');
+        if (selectedOption) {
+          // Find the selected material in allRawMaterials to get its UoM
+          const selectedMaterial = allRawMaterials.find(mat => mat._id === selectedOption);
+          if (selectedMaterial && selectedMaterial.uom) {
+            uomInput.value = selectedMaterial.uom;
+          } else {
+            uomInput.value = '';
+          }
+        } else {
+          uomInput.value = '';
+        }
+        updateMaterialsData();
+        updateStockInfoCard();
+      });
+
+      // Event listeners for quantity input change
+      newRow.querySelector('.quantity-input').addEventListener('input', updateMaterialsData);
+
+      // Event listener for remove button
+      newRow.querySelector('.remove-material-row').addEventListener('click', function() {
+        newRow.remove();
+        updateMaterialsData();
+        updateStockInfoCard();
+      });
+
+      updateMaterialsData(); // Update hidden input after adding a row
+      updateStockInfoCard();
+    }
+
+    function updateMaterialsData() {
+      var materials = [];
+      materialsContainer.querySelectorAll('.row.g-2').forEach(function(row) {
+        var materialId = row.querySelector('.material-select').value;
+        var quantity = row.querySelector('.quantity-input').value;
+        var uom = row.querySelector('.uom-display').value;
+
+        if (materialId && quantity) {
+          materials.push({
+            material_id: materialId,
+            quantity: parseFloat(quantity),
+            uom: uom
+          });
+        }
+      });
+      materialsDataInput.value = JSON.stringify(materials);
+    }
+
+    addMaterialRowBtn.addEventListener('click', function() {
+      addMaterialRow();
+    });
+
+    const updateStockInfoCard = () => {
+      currentStockInfoBody.innerHTML = ''; // Clear previous entries
+      const selectedMaterialIds = new Set();
+
+      materialsContainer.querySelectorAll('.row.g-2').forEach(function(row) {
+        const materialId = row.querySelector('.material-select').value;
+        if (materialId && !selectedMaterialIds.has(materialId)) {
+          selectedMaterialIds.add(materialId);
+          const material = allRawMaterials.find(m => m._id === materialId);
+
+          if (material) {
+            const stockRow = document.createElement('tr');
+            stockRow.innerHTML = `
+              <td>${material.material_name} (${material.sku})</td>
+              <td class="text-end">${material.current_quantity} ${material.uom}</td>
+            `;
+            currentStockInfoBody.appendChild(stockRow);
+          }
+        }
+      });
+
+      if (selectedMaterialIds.size === 0) {
+        const noMaterialRow = document.createElement('tr');
+        noMaterialRow.innerHTML = `<td colspan="2" class="text-center text-muted">No materials selected.</td>`;
+        currentStockInfoBody.appendChild(noMaterialRow);
+      }
+    };
+
+    // Add at least one material row by default
+    if (materialsContainer.children.length === 0) {
+      addMaterialRow();
+    }
+  });
+</script>
+{% endblock extra_javascript %}
