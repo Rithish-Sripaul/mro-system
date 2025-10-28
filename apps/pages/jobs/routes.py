@@ -429,16 +429,18 @@ def job_details(job_id):
         for m in db.machines.find({"_id": {"$in": machine_ids}}, {"machine_name": 1})
     }
     operators_map = {
-        str(u["_id"]): u["name"]
-        for u in db.users.find({"_id": {"$in": operator_ids}}, {"name": 1})
+        str(u["_id"]): {"name": u["name"], "avatar_url": u.get("avatar_url")}
+        for u in db.users.find(
+            {"_id": {"$in": operator_ids}}, {"name": 1, "avatar_url": 1}
+        )
     }
 
     for op in operations:
         op["machine_name"] = machines_map.get(str(op.get("assigned_machine")), "N/A")
-        op["operator_names"] = [
-            operators_map.get(str(oid), "Unknown")
-            for oid in op.get("assigned_operators", [])
-        ]
+        op["operators"] = []
+        for oid in op.get("assigned_operators", []):
+            op["operators"].append(operators_map.get(str(oid)))
+
         # Format estimated time for display
         if op.get("estimated_time"):
             op["estimated_time_display"] = (
