@@ -1,6 +1,8 @@
 {% extends 'layouts/vertical.html' %} {% block title %}Create Operation{% endblock title %} {% block extra_css %}
 <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet" />
 <link href="{{ config.ASSETS_ROOT }}/plugins/quill/quill.core.css" rel="stylesheet" type="text/css" />
+<link rel="stylesheet" href="{{ config.ASSETS_ROOT }}/plugins/daterangepicker/daterangepicker.css" type="text/css" />
+<link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet" />
 <link href="{{ config.ASSETS_ROOT }}/plugins/quill/quill.snow.css" rel="stylesheet" type="text/css" />
 <style>
   /* Tom Select integration styles */
@@ -175,190 +177,410 @@
     </div>
   </div>
 </div>
+
+<!-- Reminder Modal (Copied and adapted from raw-material-details.html) -->
+<div class="modal fade" id="reminderModal" tabindex="-1" aria-labelledby="reminderModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="reminderModalLabel">Set Procurement Reminder</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="reminderForm" novalidate>
+        <div class="modal-body">
+          <p class="text-muted">
+            Insufficient stock for
+            <strong id="reminder-material-name">Material Name</strong>
+            . Please set a reminder to order more.
+          </p>
+          <input type="hidden" id="reminder-material-id" name="material_id" />
+          <div class="mb-3">
+            <label for="quantity_to_order" class="form-label">Quantity to Order</label>
+            <div class="input-group">
+              <input
+                type="number"
+                class="form-control"
+                id="quantity_to_order"
+                name="quantity_to_order"
+                placeholder="e.g., 500"
+                required
+              />
+              <span class="input-group-text" id="reminder-uom">UoM</span>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="deadline" class="form-label">Order Deadline</label>
+            <input
+              type="text"
+              id="deadline"
+              name="deadline"
+              class="form-control"
+              data-provider="flatpickr"
+              data-date-format="Y-m-d"
+              placeholder="Select Date"
+              required
+            />
+          </div>
+          <div class="mb-3">
+            <label for="notes" class="form-label">Notes (Optional)</label>
+            <textarea
+              class="form-control"
+              id="notes"
+              name="notes"
+              rows="3"
+              placeholder="e.g., Check for new suppliers"
+            ></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel Operation</button>
+          <button type="submit" class="btn btn-primary">Set Reminder & Continue</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 {% endblock page_content %} {% block extra_javascript %}
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 <script src="{{ config.ASSETS_ROOT }}/plugins/quill/quill.js"></script>
-<script src="{{ config.ASSETS_ROOT }}/js/pages/form-quilljs.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/plugins/moment/moment.min.js"></script>
+<script src="{{ config.ASSETS_ROOT }}/plugins/daterangepicker/daterangepicker.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    // Initialize Tom Select for static select elements
-    new TomSelect('#assigned_machine', { dropdownParent: 'body' });
-    new TomSelect('#assigned_operators', {
-      plugins: ['remove_button'],
-      dropdownParent: 'body',
-    });
+   document.addEventListener('DOMContentLoaded', function() {
+     // --- Reminder Modal Setup ---
+     const reminderModalEl = document.getElementById('reminderModal');
+     const reminderModal = new bootstrap.Modal(reminderModalEl);
+     const reminderForm = document.getElementById('reminderForm');
+     const reminderMaterialName = document.getElementById('reminder-material-name');
+     const reminderMaterialIdInput = document.getElementById('reminder-material-id');
+     const reminderUom = document.getElementById('reminder-uom');
 
-    // Form validation for Quill editor
-    var createOperationForm = document.getElementById('createOperationForm');
-    createOperationForm.addEventListener('submit', function(event) {
-      // Update hidden input for Quill before validation
-      document.getElementById('description').value = quill.root.innerHTML;
+     // Initialize the date picker inside the modal
+     $('#deadline')
+       .daterangepicker({
+         singleDatePicker: true,
+         autoUpdateInput: false,
+         minDate: new Date(),
+         locale: {
+           format: 'YYYY-MM-DD',
+         },
+       })
+       .on('apply.daterangepicker', function(ev, picker) {
+         $(this).val(picker.startDate.format('YYYY-MM-DD'));
+       });
 
-      // Custom validation for Quill editor
-      var descriptionInput = document.getElementById('description');
-      var quillEditorDiv = document.getElementById('quill-editor');
-      var quillInstance = quillEditorDiv.__quill; // Get instance from the element
-      if (quillInstance) {
-        descriptionInput.value = quillInstance.root.innerHTML;
+     // Initialize Tom Select for static select elements
+     new TomSelect('#assigned_machine', { dropdownParent: 'body' });
+     new TomSelect('#assigned_operators', {
+       plugins: ['remove_button'],
+       dropdownParent: 'body',
+     });
 
-        // Custom validation for Quill editor
-        if (quillInstance.getText().trim() === '') {
-          descriptionInput.setCustomValidity('Please provide an operation description.');
-        }
-      }
-      if (!createOperationForm.checkValidity()) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
+     // --- Quill Editor Initialization ---
+     // This was previously in form-quilljs.js
+     var quill = new Quill('#quill-editor', {
+       theme: 'snow',
+       modules: { toolbar: [[{ font: [] }, { size: [] }], ['bold', 'italic', 'underline', 'strike'], [{ color: [] }, { background: [] }], [{ script: 'super' }, { script: 'sub' }], [{ header: [!1, 1, 2, 3, 4, 5, 6] }, 'blockquote', 'code-block'], [{ list: 'ordered' }, { list: 'bullet' }, { indent: '-1' }, { indent: '+1' }], ['direction', { align: [] }], ['link', 'image', 'video', 'formula'], ['clean']] },
+     });
+     quill.on('text-change', function() { document.getElementById('description').value = quill.root.innerHTML; });
 
+     // Form validation for Quill editor
+     var createOperationForm = document.getElementById('createOperationForm');
+     createOperationForm.addEventListener('submit', async function(event) {
 
+       event.preventDefault(); // Always prevent default submission to handle it manually
+       // Update hidden input for Quill before validation
+       document.getElementById('description').value = quill.root.innerHTML;
 
-      createOperationForm.classList.add('was-validated');
-    }, false);
+       // Custom validation for Quill editor
+       var descriptionInput = document.getElementById('description');
+       var quillEditorDiv = document.getElementById('quill-editor');
+       var quillInstance = quillEditorDiv.__quill; // Get instance from the element
+       if (quillInstance) {
+         descriptionInput.value = quillInstance.root.innerHTML;
 
-    // --- Dynamic Raw Materials Section ---
-    var materialsContainer = document.getElementById('materials-container');
-    var addMaterialRowBtn = document.getElementById('add-material-row');
-    var materialsDataInput = document.getElementById('materials_data');
-    var allRawMaterials = {{ all_raw_materials_json | safe }}; // Raw materials from Flask
-    const currentStockInfoBody = document.getElementById('current-stock-info-body');
+         // Custom validation for Quill editor
+         if (quillInstance.getText().trim() === '') {
+           descriptionInput.setCustomValidity('Please provide an operation description.');
+         }
+       }
+       if (!createOperationForm.checkValidity()) {
+         event.stopPropagation();
+         createOperationForm.classList.add('was-validated');
+         return; // Stop if form is invalid
+       }
 
-    let materialRowCounter = 0;
+       let insufficientStockMaterials = [];
+       const materialRows = materialsContainer.querySelectorAll('.row.g-2');
 
-    function addMaterialRow(material = null) {
-      materialRowCounter++;
-      var rowId = `material-row-${materialRowCounter}`;
+       materialRows.forEach(row => {
+         const materialId = row.querySelector('.material-select').value;
+         const quantityInput = row.querySelector('.quantity-input');
+         const requiredQuantity = parseFloat(quantityInput.value);
 
-      var newRow = document.createElement('div');
-      newRow.className = 'row g-2 mb-2 align-items-end';
-      newRow.id = rowId;
-      newRow.innerHTML = `
-        <div class="col-md-6">
-          <label class="form-label visually-hidden" for="material-select-${materialRowCounter}">Material</label>
-          <select class="form-select material-select" id="material-select-${materialRowCounter}" required>
-            <option value="">Search material...</option>
-            ${allRawMaterials.map(mat => `<option value="${mat._id}" data-uom="${mat.uom}">${mat.material_name} (${mat.sku})</option>`).join('')}
-          </select>
-          <div class="invalid-feedback">Please select a material.</div>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label visually-hidden" for="quantity-input-${materialRowCounter}">Quantity</label>
-          <input type="number" class="form-control quantity-input" id="quantity-input-${materialRowCounter}" min="0.01" step="0.01" placeholder="Quantity" required>
-          <div class="invalid-feedback">Please enter a valid quantity.</div>
-        </div>
-        <div class="col-md-2">
-          <label class="form-label visually-hidden" for="uom-display-${materialRowCounter}">UoM</label>
-          <input type="text" class="form-control uom-display" id="uom-display-${materialRowCounter}" placeholder="UoM" readonly>
-        </div>
-        <div class="col-md-1">
-          <button type="button" class="btn btn-danger btn-icon remove-material-row" data-row-id="${rowId}">
-            <i class="ti ti-trash"></i>
-          </button>
-        </div>
-      `;
-      materialsContainer.appendChild(newRow);
+         if (materialId && !isNaN(requiredQuantity) && requiredQuantity > 0) {
+           const material = allRawMaterials.find(m => m._id === materialId);
+           if (material && requiredQuantity > material.current_quantity) {
+             insufficientStockMaterials.push({
+               id: material._id,
+               name: material.material_name,
+               uom: material.uom,
+             });
+           }
+         }
+       });
 
-      // Initialize Tom Select for the new select element
-      var tomSelect = new TomSelect(newRow.querySelector('.material-select'), {
-        dropdownParent: 'body',
-      });
+       if (insufficientStockMaterials.length > 0) {
+         const remindersSet = await processRemindersSequentially(insufficientStockMaterials);
+         if (!remindersSet) {
+           Swal.fire('Cancelled', 'Operation creation has been cancelled.', 'info');
+           return; // Stop if user cancelled the reminder process
+         }
+       }
 
+       // If all checks pass (including reminders), submit the form
+       createOperationForm.submit();
+       console.log("Everything is perfect!")
 
-      // Set initial values if editing
-      if (material) {
-        newMaterialSelect.setChoiceByValue(material.material_id);
-        newRow.querySelector('.quantity-input').value = material.quantity;
-        newRow.querySelector('.uom-display').value = material.uom;
-      }
+     });
 
-      // Event listener for material selection change to update UoM
-      tomSelect.on('change', function(value) {
-        var selectedOption = value;
-        var uomInput = newRow.querySelector('.uom-display');
-        if (selectedOption) {
-          // Find the selected material in allRawMaterials to get its UoM
-          const selectedMaterial = allRawMaterials.find(mat => mat._id === selectedOption);
-          if (selectedMaterial && selectedMaterial.uom) {
-            uomInput.value = selectedMaterial.uom;
-          } else {
-            uomInput.value = '';
-          }
-        } else {
-          uomInput.value = '';
-        }
-        updateMaterialsData();
-        updateStockInfoCard();
-      });
+     async function processRemindersSequentially(materials) {
+       for (const material of materials) {
+         try {
+           await showAndProcessReminderModal(material);
+         } catch (error) {
+           console.log('Reminder process cancelled by user.');
+           console.log(error)
+           return false; // User cancelled
+         }
+       }
+       return true; // All reminders were set
+     }
 
-      // Event listeners for quantity input change
-      newRow.querySelector('.quantity-input').addEventListener('input', updateMaterialsData);
+  function showAndProcessReminderModal(material) {
+       return new Promise((resolve, reject) => {
+         // Populate modal
+         reminderMaterialName.textContent = material.name;
+         reminderMaterialIdInput.value = material.id;
+         reminderUom.textContent = material.uom;
+         reminderForm.reset(); // Clear previous inputs including validation states
+         $('#deadline').val(''); // Clear date picker specifically
 
-      // Event listener for remove button
-      newRow.querySelector('.remove-material-row').addEventListener('click', function() {
-        newRow.remove();
-        updateMaterialsData();
-        updateStockInfoCard();
-      });
+         let isResolved = false; // Flag for successful submission
+         let submitButton = reminderForm.querySelector('button[type="submit"]');
+         const originalButtonText = "Set Reminder & Continue"; // Store original text
 
-      updateMaterialsData(); // Update hidden input after adding a row
-      updateStockInfoCard();
-    }
+         // *** Reset button state BEFORE showing ***
+         submitButton.disabled = false;
+         submitButton.innerHTML = originalButtonText;
+         reminderForm.classList.remove('was-validated'); // Reset validation state visually
 
-    function updateMaterialsData() {
-      var materials = [];
-      materialsContainer.querySelectorAll('.row.g-2').forEach(function(row) {
-        var materialId = row.querySelector('.material-select').value;
-        var quantity = row.querySelector('.quantity-input').value;
-        var uom = row.querySelector('.uom-display').value;
+         // --- Define Handlers ---
+         const handleSubmit = (e) => {
+           e.preventDefault();
+           if (!reminderForm.checkValidity()) {
+               reminderForm.classList.add('was-validated');
+               return;
+           }
+           // Intentionally do not remove 'was-validated' on success yet
 
-        if (materialId && quantity) {
-          materials.push({
-            material_id: materialId,
-            quantity: parseFloat(quantity),
-            uom: uom
-          });
-        }
-      });
-      materialsDataInput.value = JSON.stringify(materials);
-    }
+           isResolved = true; // Mark intent to resolve
+           const formData = new FormData(reminderForm);
+           const url = `/inventory/raw-material/${material.id}/set-reminder`;
 
-    addMaterialRowBtn.addEventListener('click', function() {
-      addMaterialRow();
-    });
+           submitButton.disabled = true;
+           submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Setting...';
 
-    const updateStockInfoCard = () => {
-      currentStockInfoBody.innerHTML = ''; // Clear previous entries
-      const selectedMaterialIds = new Set();
+           fetch(url, { method: 'POST', body: formData })
+             .then(response => {
+                 if (!response.ok) {
+                     return response.json().then(err => { throw new Error(err.error || 'Server error'); });
+                 }
+                 return response.json();
+             })
+             .then(data => {
+               if (data.success) {
+                 reminderModal.hide(); // Let hidden event resolve
+               } else {
+                 isResolved = false; // Reset flag on failure
+                 Swal.fire('Error', data.error || 'Could not set reminder.', 'error');
+                  // Re-enable button immediately on logical failure
+                  submitButton.disabled = false;
+                  submitButton.innerHTML = originalButtonText;
+               }
+             })
+             .catch(error => {
+               isResolved = false; // Reset flag on failure
+               console.error('Reminder Fetch Error:', error);
+               Swal.fire('Error', error.message || 'An unexpected error occurred.', 'error');
+                // Re-enable button immediately on fetch/network failure
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalButtonText;
+             });
+             // Removed finally block here - rely on error handlers and hidden event
+         };
 
-      materialsContainer.querySelectorAll('.row.g-2').forEach(function(row) {
-        const materialId = row.querySelector('.material-select').value;
-        if (materialId && !selectedMaterialIds.has(materialId)) {
-          selectedMaterialIds.add(materialId);
-          const material = allRawMaterials.find(m => m._id === materialId);
+         const onModalHidden = () => {
+           // *** CRITICAL: Remove listeners AFTER hide completes ***
+           reminderForm.removeEventListener('submit', handleSubmit);
 
-          if (material) {
-            const stockRow = document.createElement('tr');
-            stockRow.innerHTML = `
-              <td>${material.material_name} (${material.sku})</td>
-              <td class="text-end">${material.current_quantity} ${material.uom}</td>
-            `;
-            currentStockInfoBody.appendChild(stockRow);
-          }
-        }
-      });
+           // Resolve or reject based on the final state of the flag
+           if (isResolved) {
+             resolve();
+           } else {
+             reject(new Error('Modal closed or cancelled by user'));
+           }
+         };
 
-      if (selectedMaterialIds.size === 0) {
-        const noMaterialRow = document.createElement('tr');
-        noMaterialRow.innerHTML = `<td colspan="2" class="text-center text-muted">No materials selected.</td>`;
-        currentStockInfoBody.appendChild(noMaterialRow);
-      }
-    };
+         // --- Add Listeners ---
+         reminderForm.addEventListener('submit', handleSubmit);
+         // Use { once: true } for the hidden event listener
+         reminderModalEl.addEventListener('hidden.bs.modal', onModalHidden, { once: true });
 
-    // Add at least one material row by default
-    if (materialsContainer.children.length === 0) {
-      addMaterialRow();
-    }
-  });
+         // --- Show Modal ---
+         reminderModal.show();
+       });
+     }
+     // --- Dynamic Raw Materials Section ---
+     var materialsContainer = document.getElementById('materials-container');
+     var addMaterialRowBtn = document.getElementById('add-material-row');
+     var materialsDataInput = document.getElementById('materials_data');
+     var allRawMaterials = {{ all_raw_materials_json | safe }}; // Raw materials from Flask
+     const currentStockInfoBody = document.getElementById('current-stock-info-body');
+
+     let materialRowCounter = 0;
+
+     function addMaterialRow(material = null) {
+       materialRowCounter++;
+       var rowId = `material-row-${materialRowCounter}`;
+
+       var newRow = document.createElement('div');
+       newRow.className = 'row g-2 mb-2 align-items-end';
+       newRow.id = rowId;
+       newRow.innerHTML = `
+         <div class="col-md-6">
+           ${materialRowCounter > 1 ? `<label class="form-label visually-hidden" for="material-select-${materialRowCounter}">Material</label>` : `<label class="form-label" for="material-select-${materialRowCounter}">Material</label>`}
+           <select class="form-select material-select" id="material-select-${materialRowCounter}" required>
+             <option value="">Search material...</option>
+             ${allRawMaterials.map(mat => `<option value="${mat._id}" data-uom="${mat.uom}">${mat.material_name} (${mat.sku})</option>`).join('')}
+           </select>
+           <div class="invalid-feedback">Please select a material.</div>
+         </div>
+         <div class="col-md-3">
+           ${materialRowCounter > 1 ? `<label class="form-label visually-hidden" for="quantity-input-${materialRowCounter}">Quantity</label>` : `<label class="form-label" for="quantity-input-${materialRowCounter}">Quantity</label>`}
+           <input type="number" class="form-control quantity-input" id="quantity-input-${materialRowCounter}" min="0.01" step="0.01" placeholder="Quantity" required>
+           <div class="invalid-feedback">Please enter a valid quantity.</div>
+         </div>
+         <div class="col-md-2">
+           ${materialRowCounter > 1 ? `<label class="form-label visually-hidden" for="uom-display-${materialRowCounter}">UoM</label>` : `<label class="form-label" for="uom-display-${materialRowCounter}">UoM</label>`}
+           <input type="text" class="form-control uom-display" id="uom-display-${materialRowCounter}" placeholder="UoM" readonly>
+         </div>
+         <div class="col-md-1">
+           <button type="button" class="btn btn-danger btn-icon remove-material-row" data-row-id="${rowId}">
+             <i class="ti ti-trash"></i>
+           </button>
+         </div>
+       `;
+       materialsContainer.appendChild(newRow);
+
+       // Initialize Tom Select for the new select element
+       var tomSelect = new TomSelect(newRow.querySelector('.material-select'), {
+         dropdownParent: 'body',
+       });
+
+       // Set initial values if editing
+       if (material) {
+         tomSelect.setValue(material.material_id);
+         newRow.querySelector('.quantity-input').value = material.quantity;
+         newRow.querySelector('.uom-display').value = material.uom || '';
+       }
+
+       // Event listener for material selection change to update UoM
+       tomSelect.on('change', function(value) {
+         var selectedOption = value;
+         var uomInput = newRow.querySelector('.uom-display');
+         if (selectedOption) {
+           // Find the selected material in allRawMaterials to get its UoM
+           const selectedMaterial = allRawMaterials.find(mat => mat._id === selectedOption);
+           if (selectedMaterial && selectedMaterial.uom) {
+             uomInput.value = selectedMaterial.uom;
+           } else {
+             uomInput.value = '';
+           }
+         } else {
+           uomInput.value = '';
+         }
+         updateMaterialsData();
+         updateStockInfoCard();
+       });
+
+       // Event listeners for quantity input change
+       newRow.querySelector('.quantity-input').addEventListener('input', () => {
+         updateMaterialsData();
+         updateStockInfoCard();
+       });
+
+       updateMaterialsData(); // Update hidden input after adding a row
+       updateStockInfoCard();
+     }
+
+     function updateMaterialsData() {
+       var materials = [];
+       materialsContainer.querySelectorAll('.row.g-2').forEach(function(row) {
+         var materialId = row.querySelector('.material-select').value;
+         var quantity = row.querySelector('.quantity-input').value;
+         var uom = row.querySelector('.uom-display').value;
+
+         if (materialId && quantity) {
+           materials.push({
+             material_id: materialId,
+             quantity: parseFloat(quantity),
+             uom: uom
+           });
+         }
+       });
+       materialsDataInput.value = JSON.stringify(materials);
+     }
+
+     addMaterialRowBtn.addEventListener('click', function() {
+       addMaterialRow();
+     });
+
+     const updateStockInfoCard = () => {
+       currentStockInfoBody.innerHTML = ''; // Clear previous entries
+       const selectedMaterialIds = new Set();
+
+       materialsContainer.querySelectorAll('.row.g-2').forEach(function(row) {
+         const materialId = row.querySelector('.material-select').value;
+         if (materialId && !selectedMaterialIds.has(materialId)) {
+           selectedMaterialIds.add(materialId);
+           const material = allRawMaterials.find(m => m._id === materialId);
+
+           if (material) {
+             const stockRow = document.createElement('tr');
+             stockRow.innerHTML = `
+               <td>${material.material_name} (${material.sku})</td>
+               <td class="text-end">${material.current_quantity} ${material.uom}</td>
+             `;
+             currentStockInfoBody.appendChild(stockRow);
+           }
+         }
+       });
+
+       if (selectedMaterialIds.size === 0) {
+         const noMaterialRow = document.createElement('tr');
+         noMaterialRow.innerHTML = `<td colspan="2" class="text-center text-muted">No materials selected.</td>`;
+         currentStockInfoBody.appendChild(noMaterialRow);
+       }
+     };
+
+     // Add at least one material row by default
+     if (materialsContainer.children.length === 0) {
+       addMaterialRow();
+     }
+   });
 </script>
 {% endblock extra_javascript %}
